@@ -12,21 +12,28 @@ REPO="${1:?Usage: $0 owner/repo}"
 
 protect() {
   local branch="$1"
-  shift
+  local approvals="$2"
   echo "Protecting branch: $branch"
   gh api \
     --method PUT \
     -H "Accept: application/vnd.github+json" \
     "repos/${REPO}/branches/${branch}/protection" \
-    -f required_status_checks.strict=true \
-    -f 'required_status_checks.contexts[]=Backend (Django)' \
-    -f 'required_status_checks.contexts[]=Frontend (Vite/React)' \
-    -F enforce_admins=false \
-    -F required_pull_request_reviews.required_approving_review_count="$1" \
-    -F required_pull_request_reviews.dismiss_stale_reviews=true \
-    -F restrictions=null \
-    -F allow_force_pushes=false \
-    -F allow_deletions=false
+    --input - <<EOF
+{
+  "required_status_checks": {
+    "strict": true,
+    "contexts": ["Backend (Django)", "Frontend (Vite/React)"]
+  },
+  "enforce_admins": false,
+  "required_pull_request_reviews": {
+    "required_approving_review_count": ${approvals},
+    "dismiss_stale_reviews": true
+  },
+  "restrictions": null,
+  "allow_force_pushes": false,
+  "allow_deletions": false
+}
+EOF
 }
 
 protect main 1
