@@ -1,0 +1,17 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} | FJ Admin{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Sora:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'admin/css/fjadmin.css' %}">
+{% endblock %}
+
+{% block branding %}
+<div id="site-name"><a href="{% url 'admin:index' %}">FJ<em style="color:#93C5FD;font-style:normal">ADMIN</em> &mdash; Site Administration</a></div>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

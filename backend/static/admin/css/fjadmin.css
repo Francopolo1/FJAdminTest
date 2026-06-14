@@ -1,0 +1,263 @@
+/* FJ Admin — Django admin theme matching the main dashboard look & feel */
+
+:root, html[data-theme="light"] {
+  --primary: #2563EB;
+  --primary-fg: #fff;
+
+  --body-fg: #212529;
+  --body-bg: #F8F9FA;
+  --body-quiet-color: #6C757D;
+  --body-loud-color: #0D0F12;
+
+  --header-color: #fff;
+  --header-branding-color: #fff;
+  --header-bg: #0F172A;
+  --header-link-color: #fff;
+
+  --breadcrumbs-fg: #94A3B8;
+  --breadcrumbs-link-fg: #fff;
+  --breadcrumbs-bg: #1D4ED8;
+
+  --link-fg: #2563EB;
+  --link-hover-color: #1D4ED8;
+  --link-selected-fg: #2563EB;
+
+  --hairline-color: #DEE2E6;
+  --border-color: #DEE2E6;
+
+  --error-fg: #E11D48;
+  --message-success-bg: #ECFDF5;
+  --message-warning-bg: #FFFBEB;
+  --message-error-bg: #FFF1F2;
+
+  --darkened-bg: #F1F3F5;
+  --selected-bg: #EFF5FF;
+  --selected-row: #EFF5FF;
+
+  --button-bg: #2563EB;
+  --button-fg: #fff;
+  --button-hover-bg: #1D4ED8;
+  --default-button-bg: #2563EB;
+  --default-button-hover-bg: #1D4ED8;
+  --close-button-bg: #6C757D;
+  --close-button-hover-bg: #495057;
+  --delete-button-bg: #E11D48;
+  --delete-button-hover-bg: #BE123C;
+
+  --object-tools-bg: #2563EB;
+  --object-tools-hover-bg: #1D4ED8;
+
+  --font-family-primary: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+html[data-theme="dark"] {
+  --primary: #3B82F6;
+  --primary-fg: #fff;
+
+  --body-fg: #E2E8F0;
+  --body-bg: #0F172A;
+  --body-quiet-color: #94A3B8;
+  --body-loud-color: #F8FAFC;
+
+  --header-color: #fff;
+  --header-branding-color: #fff;
+  --header-bg: #0B1120;
+  --header-link-color: #fff;
+
+  --breadcrumbs-fg: #94A3B8;
+  --breadcrumbs-link-fg: #fff;
+  --breadcrumbs-bg: #1E3A8A;
+
+  --link-fg: #60A5FA;
+  --link-hover-color: #93C5FD;
+  --link-selected-fg: #60A5FA;
+
+  --hairline-color: #334155;
+  --border-color: #334155;
+
+  --error-fg: #FB7185;
+  --message-success-bg: #052e1f;
+  --message-warning-bg: #3a2e05;
+  --message-error-bg: #3a0d18;
+
+  --darkened-bg: #1E293B;
+  --selected-bg: #1E3A5F;
+  --selected-row: #1E3A5F;
+
+  --button-bg: #3B82F6;
+  --button-fg: #fff;
+  --button-hover-bg: #60A5FA;
+  --default-button-bg: #3B82F6;
+  --default-button-hover-bg: #60A5FA;
+  --close-button-bg: #475569;
+  --close-button-hover-bg: #64748B;
+  --delete-button-bg: #E11D48;
+  --delete-button-hover-bg: #BE123C;
+
+  --object-tools-bg: #3B82F6;
+  --object-tools-hover-bg: #60A5FA;
+
+  --font-family-primary: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-theme="auto"] {
+    --primary: #3B82F6;
+    --primary-fg: #fff;
+
+    --body-fg: #E2E8F0;
+    --body-bg: #0F172A;
+    --body-quiet-color: #94A3B8;
+    --body-loud-color: #F8FAFC;
+
+    --header-color: #fff;
+    --header-branding-color: #fff;
+    --header-bg: #0B1120;
+    --header-link-color: #fff;
+
+    --breadcrumbs-fg: #94A3B8;
+    --breadcrumbs-link-fg: #fff;
+    --breadcrumbs-bg: #1E3A8A;
+
+    --link-fg: #60A5FA;
+    --link-hover-color: #93C5FD;
+    --link-selected-fg: #60A5FA;
+
+    --hairline-color: #334155;
+    --border-color: #334155;
+
+    --error-fg: #FB7185;
+    --message-success-bg: #052e1f;
+    --message-warning-bg: #3a2e05;
+    --message-error-bg: #3a0d18;
+
+    --darkened-bg: #1E293B;
+    --selected-bg: #1E3A5F;
+    --selected-row: #1E3A5F;
+
+    --button-bg: #3B82F6;
+    --button-fg: #fff;
+    --button-hover-bg: #60A5FA;
+    --default-button-bg: #3B82F6;
+    --default-button-hover-bg: #60A5FA;
+    --close-button-bg: #475569;
+    --close-button-hover-bg: #64748B;
+    --delete-button-bg: #E11D48;
+    --delete-button-hover-bg: #BE123C;
+
+    --object-tools-bg: #3B82F6;
+    --object-tools-hover-bg: #60A5FA;
+  }
+}
+
+body {
+  font-family: var(--font-family-primary);
+}
+
+/* ── Branding / header ── */
+#header {
+  background: var(--header-bg);
+  color: var(--header-color);
+  padding: 12px 24px;
+}
+#branding h1, #branding h1 a:link, #branding h1 a:visited {
+  font-family: 'Sora', var(--font-family-primary);
+  font-weight: 600;
+  color: #fff;
+  font-size: 1.1rem;
+}
+#branding h1 a:hover {
+  color: #93C5FD;
+}
+#user-tools {
+  font-size: 12px;
+}
+#user-tools a {
+  border-bottom: 1px solid rgba(255,255,255,.3);
+}
+#user-tools a:hover {
+  color: #93C5FD;
+  border-bottom-color: #93C5FD;
+}
+
+/* ── Breadcrumbs ── */
+div.breadcrumbs {
+  background: var(--breadcrumbs-bg);
+  color: var(--breadcrumbs-fg);
+  padding: 10px 24px;
+  font-size: 12px;
+}
+div.breadcrumbs a {
+  color: var(--breadcrumbs-link-fg);
+}
+div.breadcrumbs a:hover {
+  color: #93C5FD;
+}
+
+/* ── Module / boxes ── */
+.module h2, .module caption, .inline-group h2 {
+  background: #0F172A;
+  font-family: 'Sora', var(--font-family-primary);
+  font-weight: 600;
+  border-radius: .625rem .625rem 0 0;
+}
+.module {
+  border-radius: .625rem;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.04);
+  border: 1px solid var(--border-color);
+}
+
+/* ── Buttons ── */
+.button, input[type=submit], input[type=button], .submit-row input, a.button {
+  border-radius: .5rem;
+  font-weight: 500;
+  font-family: var(--font-family-primary);
+}
+.button.default, input[type=submit].default, .submit-row input.default {
+  background: var(--primary);
+  font-weight: 600;
+}
+.button.default:hover, input[type=submit].default:hover {
+  background: var(--button-hover-bg);
+}
+
+/* ── Tables / changelist ── */
+#changelist table thead th {
+  background: var(--darkened-bg);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: .05em;
+  color: var(--body-quiet-color);
+}
+#changelist table tbody tr:hover {
+  background: var(--selected-bg);
+}
+
+/* ── Object tools ── */
+.object-tools a.addlink {
+  border-radius: .5rem;
+}
+
+/* ── Form rows ── */
+.form-row input, .form-row select, .form-row textarea {
+  border-radius: .375rem;
+  border: 1px solid var(--border-color);
+}
+.form-row input:focus, .form-row select:focus, .form-row textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+}
+
+/* ── Dashboard app list ── */
+.dashboard .module table th {
+  font-family: 'Sora', var(--font-family-primary);
+}
+
+/* ── Login ── */
+.login #header {
+  justify-content: center;
+}
+.login .submit-row input {
+  background: var(--primary);
+}

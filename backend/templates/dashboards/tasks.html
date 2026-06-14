@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Tasks{% endblock %}
+{% block nav_tasks %}active{% endblock %}
+{% block topbar_breadcrumb %}<div class="topbar-breadcrumb"><span>Home</span><span>Tasks</span></div>{% endblock %}
+{% block topbar_title %}Pending Tasks{% endblock %}
+{% block content %}
+<div class="stat-grid" style="grid-template-columns:repeat(5,1fr)">
+  <div class="stat-card"><div class="stat-value">{{ stats.total }}</div><div class="stat-label">Total</div></div>
+  <div class="stat-card"><div class="stat-value" style="color:#2563EB">{{ stats.pending }}</div><div class="stat-label">Pending</div></div>
+  <div class="stat-card"><div class="stat-value" style="color:#3B82F6">{{ stats.in_progress }}</div><div class="stat-label">In Progress</div></div>
+  <div class="stat-card"><div class="stat-value" style="color:#E11D48">{{ stats.overdue }}</div><div class="stat-label">Overdue</div></div>
+  <div class="stat-card"><div class="stat-value" style="color:#ADB5BD">{{ stats.no_due }}</div><div class="stat-label">No Due Date</div></div>
+</div>
+<div class="card" style="margin-bottom:1rem"><div class="card-body" style="padding:.875rem 1.25rem">
+  <form method="get" class="form-row">
+    <input type="text" name="search" class="input" placeholder="Search reference, assignee, step…" value="{{ filter_search }}"/>
+    <select name="status" class="select" onchange="this.form.submit()">
+      <option value="">All Statuses</option>
+      <option value="Pending" {% if filter_status == "Pending" %}selected{% endif %}>Pending</option>
+      <option value="InProgress" {% if filter_status == "InProgress" %}selected{% endif %}>In Progress</option>
+      <option value="Overdue" {% if filter_status == "Overdue" %}selected{% endif %}>Overdue</option>
+    </select>
+    <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#343A40;cursor:pointer">
+      <input type="checkbox" name="overdue_only" value="1" {% if overdue_only %}checked{% endif %} onchange="this.form.submit()"/> Overdue only
+    </label>
+    <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+    <a href="{% url 'dashboards:tasks' %}" class="btn btn-secondary btn-sm">Clear</a>
+  </form>
+</div></div>
+{% if tasks %}
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Reference</th><th>Workflow</th><th>Step</th><th>Assigned To</th><th>Status</th><th>Priority</th><th>Due Date</th><th>Hours Left</th></tr></thead>
+    <tbody>
+      {% for t in tasks %}
+      <tr {% if t.due_date and t.due_date < now %}style="background:#FFF5F5"{% endif %}>
+        <td><a href="{% url 'dashboards:instances' %}?search={{ t.reference_no }}" style="color:#2563EB;font-weight:600;text-decoration:none">{{ t.reference_no }}</a></td>
+        <td>{{ t.workflow_name|truncatechars:25 }}</td>
+        <td style="font-weight:500">{{ t.step_name }}</td>
+        <td>{{ t.assigned_to }}<br><span style="font-size:11px;color:#ADB5BD">{{ t.assignee_email }}</span></td>
+        <td>
+          {% if t.status == "Pending" %}<span class="badge badge-amber">Pending</span>
+          {% elif t.status == "InProgress" %}<span class="badge badge-blue">In Progress</span>
+          {% elif t.status == "Overdue" %}<span class="badge badge-red">Overdue</span>
+          {% else %}<span class="badge badge-gray">{{ t.status }}</span>{% endif %}
+        </td>
+        <td>
+          {% if t.priority == 4 %}<span class="badge badge-red">Urgent</span>
+          {% elif t.priority == 3 %}<span class="badge badge-amber">High</span>
+          {% elif t.priority == 2 %}<span class="badge badge-blue">Normal</span>
+          {% else %}<span class="badge badge-gray">Low</span>{% endif %}
+        </td>
+        <td>{% if t.due_date %}<span class="{% if t.due_date < now %}overdue{% endif %}">{{ t.due_date|date:"d M Y" }}</span>{% else %}—{% endif %}</td>
+        <td>{% if t.hours_remaining is not None %}{% if t.hours_remaining == 0 %}<span class="overdue">Overdue</span>{% else %}{{ t.hours_remaining }}h{% endif %}{% else %}—{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card"><div class="empty-state"><p>No tasks match your filters.</p></div></div>
+{% endif %}
+{% endblock %}

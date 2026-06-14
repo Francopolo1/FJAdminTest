@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Facilities{% endblock %}
+{% block nav_facilities %}active{% endblock %}
+{% block topbar_breadcrumb %}<div class="topbar-breadcrumb"><span>Home</span><span>Facilities</span></div>{% endblock %}
+{% block topbar_title %}Facilities & Programs{% endblock %}
+{% block content %}
+{% if stats.error %}<div class="alert alert-error">Database error: {{ stats.error }}</div>{% endif %}
+<div class="stat-grid" style="grid-template-columns:repeat(4,1fr)">
+  <div class="stat-card"><div class="stat-value">{{ stats.total_facilities }}</div><div class="stat-label">Total Facilities</div></div>
+  <div class="stat-card"><div class="stat-value" style="color:#059669">{{ stats.active_facilities }}</div><div class="stat-label">Active Facilities</div></div>
+  <div class="stat-card"><div class="stat-value">{{ stats.total_programs }}</div><div class="stat-label">Programs</div></div>
+  <div class="stat-card"><div class="stat-value" style="color:#059669">{{ stats.active_programs }}</div><div class="stat-label">Active Programs</div></div>
+</div>
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:1rem">
+  <!-- Facilities table -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">Facilities</span></div>
+    {% if facilities %}
+    <div class="table-wrap" style="border:none;border-radius:0;box-shadow:none">
+      <table>
+        <thead><tr><th>Name</th><th>Status</th><th>Address</th><th>City</th><th>State</th><th>Active Since</th></tr></thead>
+        <tbody>
+          {% for f in facilities %}
+          <tr>
+            <td style="font-weight:600">{{ f.name|default:"—" }}</td>
+            <td>{% if f.activity_status %}<span class="badge badge-green">Active</span>{% else %}<span class="badge badge-gray">Inactive</span>{% endif %}</td>
+            <td style="font-size:12px;color:#6C757D">{{ f.addressline1|default:"—" }}</td>
+            <td style="font-size:12px;color:#6C757D">{{ f.city|default:"—" }}</td>
+            <td style="font-size:12px;color:#6C757D">{{ f.stateprovince|default:"—" }}</td>
+            <td style="font-size:12px;color:#ADB5BD;white-space:nowrap">{% if f.active_date %}{{ f.active_date|date:"d M Y" }}{% else %}—{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<div class="empty-state"><p>No facilities found.</p></div>{% endif %}
+  </div>
+  <!-- Programs -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">Programs</span></div>
+    {% if programs %}
+    <div style="padding:.5rem 0">
+      {% for p in programs %}
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:.625rem 1.25rem;border-bottom:1px solid #F1F3F5">
+        <div style="min-width:0;flex:1">
+          <p style="font-size:12px;font-weight:600;color:#212529">{{ p.code }} — {{ p.title|truncatechars:25 }}</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:.375rem;flex-shrink:0">
+          {% if p.is_active %}<span class="badge badge-green">Active</span>{% else %}<span class="badge badge-gray">Inactive</span>{% endif %}
+          <span class="badge badge-blue">{{ p.facility_count }} facilities</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}<div class="empty-state"><p>No programs found.</p></div>{% endif %}
+  </div>
+</div>
+{% endblock %}

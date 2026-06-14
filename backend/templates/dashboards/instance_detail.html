@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}{{ instance.reference_no }}{% endblock %}
+{% block nav_instances %}active{% endblock %}
+{% block topbar_breadcrumb %}
+<div class="topbar-breadcrumb"><span>Home</span><span><a href="{% url 'dashboards:instances' %}" style="color:inherit;text-decoration:none">Requests</a></span><span>{{ instance.reference_no }}</span></div>
+{% endblock %}
+{% block topbar_title %}{{ instance.reference_no }}{% endblock %}
+
+{% block content %}
+<!-- Header card -->
+<div class="card" style="margin-bottom:1rem">
+  <div class="card-body">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem">
+      <div><p style="font-size:11px;color:#6C757D;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Workflow</p><p style="font-weight:600">{{ instance.workflow_name }}</p></div>
+      <div><p style="font-size:11px;color:#6C757D;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Status</p>
+        {% if instance.status == "Approved" %}<span class="badge badge-green">Approved</span>
+        {% elif instance.status == "Rejected" %}<span class="badge badge-red">Rejected</span>
+        {% elif instance.status == "InProgress" %}<span class="badge badge-blue">In Progress</span>
+        {% elif instance.status == "OnHold" %}<span class="badge badge-amber">On Hold</span>
+        {% else %}<span class="badge badge-gray">{{ instance.status }}</span>{% endif %}
+      </div>
+      <div><p style="font-size:11px;color:#6C757D;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Priority</p>
+        <span class="badge {% if instance.priority == 4 %}badge-red{% elif instance.priority == 3 %}badge-amber{% elif instance.priority == 2 %}badge-blue{% else %}badge-gray{% endif %}">{{ priority_label }}</span>
+      </div>
+      <div><p style="font-size:11px;color:#6C757D;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Current Step</p><p>{{ instance.current_step|default:"Completed" }}</p></div>
+      <div><p style="font-size:11px;color:#6C757D;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Initiated By</p><p>{{ instance.initiated_by }}</p></div>
+      <div><p style="font-size:11px;color:#6C757D;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Started</p><p>{{ instance.started_at|date:"d M Y H:i" }}</p></div>
+      <div><p style="font-size:11px;color:#6C757D;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Due Date</p>
+        {% if instance.due_date %}
+          <p class="{% if instance.due_date < now and instance.status == 'InProgress' %}overdue{% endif %}">{{ instance.due_date|date:"d M Y" }}</p>
+        {% else %}<p>—</p>{% endif %}
+      </div>
+      <div><p style="font-size:11px;color:#6C757D;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Elapsed</p><p>{{ instance.elapsed_hours|default:"—" }}h</p></div>
+    </div>
+
+    <!-- Checklist progress bar -->
+    {% if instance.total_checklists > 0 %}
+    <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid #F1F3F5">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:12px;font-weight:500;color:#6C757D">Checklist Completion</span>
+        <span style="font-size:12px;font-weight:600;color:#343A40">{{ instance.completed_checklists }}/{{ instance.total_checklists }} ({{ instance.checklist_pct_done|default:0 }}%)</span>
+      </div>
+      <div class="progress"><div class="progress-fill {% if instance.checklist_pct_done == 100 %}fill-green{% endif %}" style="width:{{ instance.checklist_pct_done|default:0 }}%"></div></div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <a href="#tasks"      class="tab active" onclick="showTab('tasks',this);return false">Tasks ({{ tasks.count }})</a>
+  <a href="#checklists" class="tab"        onclick="showTab('checklists',this);return false">Checklists ({{ checklists.count }})</a>
+  <a href="#audit"      class="tab"        onclick="showTab('audit',this);return false">Audit Log ({{ audit_logs|length }})</a>
+</div>
+
+<!-- Tasks tab -->
+<div id="tab-tasks">
+  {% if tasks %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Step</th><th>Assigned To</th><th>Status</th><th>Assigned At</th><th>Due Date</th><th>Hours Left</th></tr></thead>
+      <tbody>
+        {% for t in tasks %}
+        <tr>
+          <td style="font-weight:500">{{ t.step_name }}</td>
+          <td>{{ t.assigned_to }}<br><span style="font-size:11px;color:#ADB5BD">{{ t.assignee_email }}</span></td>
+          <td>
+            {% if t.status == "Pending" %}<span class="badge badge-amber">Pending</span>
+            {% elif t.status == "InProgress" %}<span class="badge badge-blue">In Progress</span>
+            {% elif t.status == "Overdue" %}<span class="badge badge-red">Overdue</span>
+            {% else %}<span class="badge badge-gray">{{ t.status }}</span>{% endif %}
+          </td>
+          <td style="font-size:12px;color:#6C757D">{{ t.assigned_at|date:"d M Y H:i" }}</td>
+          <td>{% if t.due_date %}<span class="{% if t.due_date < now %}overdue{% endif %}">{{ t.due_date|date:"d M Y" }}</span>{% else %}—{% endif %}</td>
+          <td>{% if t.hours_remaining is not None %}{{ t.hours_remaining }}h{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card"><div class="empty-state"><p>No tasks for this request.</p></div></div>
+  {% endif %}
+</div>
+
+<!-- Checklists tab -->
+<div id="tab-checklists" style="display:none">
+  {% if checklists %}
+  <div style="display:flex;flex-direction:column;gap:.75rem">
+    {% for cl in checklists %}
+    <div class="card">
+      <div class="card-body">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+          <div>
+            <p style="font-weight:600;color:#212529">{{ cl.checklist_title }}</p>
+            <div style="display:flex;gap:.5rem;margin-top:.25rem">
+              {% if cl.run_status == "Completed" %}<span class="badge badge-green">Completed</span>
+              {% elif cl.run_status == "InProgress" %}<span class="badge badge-blue">In Progress</span>
+              {% elif cl.run_status == "NotStarted" %}<span class="badge badge-gray">Not Started</span>
+              {% else %}<span class="badge badge-gray">{{ cl.run_status }}</span>{% endif %}
+              {% if cl.blocks_advance %}<span class="badge badge-red">Blocks Advance</span>{% endif %}
+            </div>
+          </div>
+          <div style="text-align:right">
+            <p style="font-size:1.25rem;font-weight:700;color:#212529">{{ cl.pct_complete|default:0 }}%</p>
+            <p style="font-size:11px;color:#ADB5BD">{{ cl.answered_required }}/{{ cl.required_items }} required</p>
+          </div>
+        </div>
+        <div class="progress">
+          <div class="progress-fill {% if cl.pct_complete == 100 %}fill-green{% elif cl.pct_complete and cl.pct_complete < 50 %}fill-amber{% endif %}"
+               style="width:{{ cl.pct_complete|default:0 }}%"></div>
+        </div>
+        <p style="font-size:11px;color:#ADB5BD;margin-top:.375rem">{{ cl.answered_items }} of {{ cl.total_items }} items answered</p>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card"><div class="empty-state"><p>No checklists for this request.</p></div></div>
+  {% endif %}
+</div>
+
+<!-- Audit log tab -->
+<div id="tab-audit" style="display:none">
+  {% if audit_logs %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Action</th><th>Actor</th><th>From</th><th>To</th><th>Notes</th><th>Time</th></tr></thead>
+      <tbody>
+        {% for log in audit_logs %}
+        <tr>
+          <td><span class="badge badge-blue">{{ log.action }}</span></td>
+          <td style="font-weight:500">{{ log.actor_name }}</td>
+          <td>{% if log.from_status %}<span class="badge badge-gray">{{ log.from_status }}</span>{% else %}—{% endif %}</td>
+          <td>{% if log.to_status %}
+            {% if log.to_status == "Approved" %}<span class="badge badge-green">{{ log.to_status }}</span>
+            {% elif log.to_status == "Rejected" %}<span class="badge badge-red">{{ log.to_status }}</span>
+            {% else %}<span class="badge badge-blue">{{ log.to_status }}</span>{% endif %}
+          {% else %}—{% endif %}</td>
+          <td style="color:#6C757D;font-size:12px;max-width:200px">{{ log.notes|default:"—"|truncatechars:60 }}</td>
+          <td style="font-size:12px;color:#ADB5BD;white-space:nowrap">{{ log.logged_at|date:"d M Y H:i" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card"><div class="empty-state"><p>No audit entries yet.</p></div></div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showTab(name, el) {
+  ['tasks','checklists','audit'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t===name ? '' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+</script>
+{% endblock %}

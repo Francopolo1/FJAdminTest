@@ -1,0 +1,36 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+
+# Requires repo secrets: PROD_HOST, PROD_USER, PROD_SSH_KEY,
+# PROD_DEPLOY_PATH. Fill these in under
+# Settings > Environments > production before this workflow can deploy.
+# The "production" environment can additionally be configured with
+# required reviewers for manual approval before deploy.
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            cd ${{ secrets.PROD_DEPLOY_PATH }}
+            git fetch origin main
+            git reset --hard origin/main
+            cd backend && source venv/bin/activate
+            pip install -r requirements/prod.txt
+            python manage.py migrate --noinput
+            python manage.py collectstatic --noinput
+            sudo systemctl restart fjadmin-backend
+            cd ../frontend && npm ci && npm run build
+            sudo systemctl reload nginx

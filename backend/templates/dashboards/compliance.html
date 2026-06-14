@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Compliance{% endblock %}
+{% block nav_compliance %}active{% endblock %}
+{% block topbar_breadcrumb %}<div class="topbar-breadcrumb"><span>Home</span><span>Compliance</span></div>{% endblock %}
+{% block topbar_title %}Compliance Dashboard{% endblock %}
+{% block content %}
+{% if stats.error %}<div class="alert alert-error">Database error: {{ stats.error }}</div>{% endif %}
+<div class="stat-grid" style="grid-template-columns:repeat(3,1fr)">
+  <div class="stat-card"><div class="stat-value" style="color:#E11D48">{{ stats.total_violations }}</div><div class="stat-label">Total Violations</div></div>
+  <div class="stat-card"><div class="stat-value" style="color:#059669">{{ stats.active_rules }}</div><div class="stat-label">Active Rules</div></div>
+  <div class="stat-card"><div class="stat-value" style="color:#D97706">{{ stats.rules_with_violations }}</div><div class="stat-label">Rules with Violations</div></div>
+</div>
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:1rem">
+  <!-- Violations table -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">Recent Violations</span></div>
+    {% if violations %}
+    <div class="table-wrap" style="border:none;border-radius:0;box-shadow:none">
+      <table>
+        <thead><tr><th>Date</th><th>Rule</th><th>Severity</th><th>Checklist Item</th><th>Description</th></tr></thead>
+        <tbody>
+          {% for v in violations %}
+          <tr>
+            <td style="white-space:nowrap;font-size:12px;color:#6C757D">{{ v.violation_date }}</td>
+            <td><span style="font-size:12px;font-weight:600">{{ v.rule_code }}</span><br><span style="font-size:11px;color:#6C757D">{{ v.rule_name|truncatechars:30 }}</span></td>
+            <td>
+              {% if v.severity_code == "HIGH" or v.severity_code == "CRIT" %}<span class="badge badge-red">{{ v.severity }}</span>
+              {% elif v.severity_code == "MED" %}<span class="badge badge-amber">{{ v.severity }}</span>
+              {% else %}<span class="badge badge-gray">{{ v.severity }}</span>{% endif %}
+            </td>
+            <td style="font-size:12px;color:#6C757D;max-width:150px">{{ v.item_text|default:"—"|truncatechars:40 }}</td>
+            <td style="font-size:12px;color:#6C757D;max-width:200px">{{ v.violation_description|default:"—"|truncatechars:60 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<div class="empty-state"><p>No violations recorded.</p></div>{% endif %}
+  </div>
+  <!-- Rules panel -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">Compliance Rules</span></div>
+    {% if rules %}
+    <div style="padding:.5rem 0">
+      {% for r in rules %}
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:.625rem 1.25rem;border-bottom:1px solid #F1F3F5">
+        <div style="min-width:0;flex:1">
+          <p style="font-size:12px;font-weight:600;color:#212529">{{ r.code }}</p>
+          <p style="font-size:11px;color:#ADB5BD;truncate">{{ r.name|truncatechars:30 }}</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0">
+          {% if r.is_active %}<span class="badge badge-green">Active</span>{% else %}<span class="badge badge-gray">Inactive</span>{% endif %}
+          {% if r.violation_count > 0 %}<span class="badge badge-red">{{ r.violation_count }}</span>{% else %}<span class="badge badge-gray">0</span>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}<div class="empty-state"><p>No compliance rules found.</p></div>{% endif %}
+  </div>
+</div>
+{% endblock %}

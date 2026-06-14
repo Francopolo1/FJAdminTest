@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Requests{% endblock %}
+{% block nav_instances %}active{% endblock %}
+{% block topbar_breadcrumb %}<div class="topbar-breadcrumb"><span>Home</span><span>Requests</span></div>{% endblock %}
+{% block topbar_title %}Requests <span style="font-size:.875rem;font-weight:400;color:#6C757D">({{ total }})</span>{% endblock %}
+
+{% block content %}
+<!-- Filters -->
+<div class="card" style="margin-bottom:1rem">
+  <div class="card-body" style="padding:.875rem 1.25rem">
+    <form method="get" class="form-row">
+      <input type="text" name="search" class="input" placeholder="Search reference, workflow, user…" value="{{ filter_search }}"/>
+      <select name="status" class="select" onchange="this.form.submit()">
+        <option value="">All Statuses</option>
+        {% for s in statuses %}<option value="{{ s }}" {% if filter_status == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+      </select>
+      <select name="priority" class="select" onchange="this.form.submit()">
+        <option value="">All Priorities</option>
+        <option value="1" {% if filter_priority == "1" %}selected{% endif %}>Low</option>
+        <option value="2" {% if filter_priority == "2" %}selected{% endif %}>Normal</option>
+        <option value="3" {% if filter_priority == "3" %}selected{% endif %}>High</option>
+        <option value="4" {% if filter_priority == "4" %}selected{% endif %}>Urgent</option>
+      </select>
+      {% if categories %}
+      <select name="category" class="select" onchange="this.form.submit()">
+        <option value="">All Categories</option>
+        {% for c in categories %}<option value="{{ c }}" {% if filter_category == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+      </select>
+      {% endif %}
+      <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+      <a href="{% url 'dashboards:instances' %}" class="btn btn-secondary btn-sm">Clear</a>
+    </form>
+  </div>
+</div>
+
+<!-- Table -->
+{% if instances %}
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Reference</th><th>Workflow</th><th>Category</th><th>Initiated By</th>
+        <th>Current Step</th><th>Status</th><th>Priority</th>
+        <th>Tasks</th><th>Checklists</th><th>Started</th><th>Due</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for inst in instances %}
+      <tr>
+        <td>
+          <a href="{% url 'dashboards:instance_detail' inst.instance_id %}"
+             style="color:#2563EB;font-weight:600;text-decoration:none">{{ inst.reference_no }}</a>
+        </td>
+        <td>{{ inst.workflow_name|truncatechars:30 }}</td>
+        <td>{% if inst.category %}<span class="badge badge-gray">{{ inst.category }}</span>{% else %}—{% endif %}</td>
+        <td>{{ inst.initiated_by }}</td>
+        <td>{% if inst.current_step %}<span style="font-size:12px;background:#F1F3F5;padding:2px 8px;border-radius:4px">{{ inst.current_step }}</span>{% else %}—{% endif %}</td>
+        <td>
+          {% if inst.status == "Approved" %}<span class="badge badge-green">Approved</span>
+          {% elif inst.status == "Rejected" %}<span class="badge badge-red">Rejected</span>
+          {% elif inst.status == "InProgress" %}<span class="badge badge-blue">In Progress</span>
+          {% elif inst.status == "OnHold" %}<span class="badge badge-amber">On Hold</span>
+          {% elif inst.status == "Cancelled" %}<span class="badge badge-gray">Cancelled</span>
+          {% else %}<span class="badge badge-gray">{{ inst.status }}</span>{% endif %}
+        </td>
+        <td>
+          {% with p=inst.priority %}
+          {% if p == 4 %}<span class="badge badge-red">Urgent</span>
+          {% elif p == 3 %}<span class="badge badge-amber">High</span>
+          {% elif p == 2 %}<span class="badge badge-blue">Normal</span>
+          {% else %}<span class="badge badge-gray">Low</span>{% endif %}
+          {% endwith %}
+        </td>
+        <td style="text-align:center">{{ inst.completed_tasks }}/{{ inst.total_tasks }}</td>
+        <td>
+          {% if inst.total_checklists > 0 %}
+          <div style="display:flex;align-items:center;gap:.375rem;min-width:80px">
+            <div class="progress" style="flex:1"><div class="progress-fill {% if inst.checklist_pct_done == 100 %}fill-green{% elif inst.checklist_pct_done and inst.checklist_pct_done < 50 %}fill-red{% endif %}" style="width:{{ inst.checklist_pct_done|default:0 }}%"></div></div>
+            <span style="font-size:11px;color:#6C757D">{{ inst.checklist_pct_done|default:0 }}%</span>
+          </div>
+          {% else %}—{% endif %}
+        </td>
+        <td style="white-space:nowrap;font-size:12px;color:#6C757D">{{ inst.started_at|date:"d M Y" }}</td>
+        <td style="white-space:nowrap;font-size:12px">
+          {% if inst.due_date %}
+            {% if inst.status == "InProgress" and inst.due_date < now %}
+              <span class="overdue">{{ inst.due_date|date:"d M Y" }} ⚠</span>
+            {% else %}
+              {{ inst.due_date|date:"d M Y" }}
+            {% endif %}
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card"><div class="empty-state"><h3 style="font-size:1rem;font-weight:600;color:#343A40">No requests found</h3><p>Adjust your filters or submit a new request.</p></div></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,27 @@
+# --- Python / Django ---
+__pycache__/
+*.py[cod]
+*.sqlite3
+backend/venv/
+backend/staticfiles/
+backend/media/
+backend/.env
+
+# --- Node / Vite ---
+node_modules/
+frontend/dist/
+frontend/.env*.local
+
+# --- Env files ---
+.env
+.env.local
+.env.*.local
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Claude ---
+.claude/settings.local.json

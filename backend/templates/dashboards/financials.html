@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Financials{% endblock %}
+{% block nav_financials %}active{% endblock %}
+{% block topbar_breadcrumb %}<div class="topbar-breadcrumb"><span>Home</span><span>Financials</span></div>{% endblock %}
+{% block topbar_title %}Financials Dashboard{% endblock %}
+{% block content %}
+{% if stats.error %}<div class="alert alert-error">Database error: {{ stats.error }}</div>{% endif %}
+
+<!-- Status breakdown -->
+{% if stats.status_breakdown %}
+<div class="stat-grid" style="margin-bottom:1.25rem">
+  {% for sb in stats.status_breakdown %}
+  <div class="stat-card">
+    <div class="stat-value">{{ sb.count }}</div>
+    <div class="stat-label">{{ sb.status }}</div>
+    <div style="font-size:11px;color:#ADB5BD;margin-top:2px">${{ sb.total|floatformat:2 }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:1rem">
+  <!-- Transactions -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">Recent Transactions</span></div>
+    {% if transactions %}
+    <div class="table-wrap" style="border:none;border-radius:0;box-shadow:none">
+      <table>
+        <thead><tr><th>Date</th><th>Reference</th><th>Description</th><th>Amount</th><th>Status</th><th>FOAPAL</th></tr></thead>
+        <tbody>
+          {% for t in transactions %}
+          <tr>
+            <td style="white-space:nowrap;font-size:12px;color:#6C757D">{{ t.transaction_date }}</td>
+            <td style="font-size:12px;font-weight:600;color:#2563EB">{{ t.reference_number|default:"—" }}</td>
+            <td style="font-size:12px;max-width:180px;color:#6C757D">{{ t.description|truncatechars:40 }}</td>
+            <td style="font-weight:600;white-space:nowrap">{{ t.currency }} {{ t.amount|floatformat:2 }}</td>
+            <td>
+              {% if t.status == "Posted" %}<span class="badge badge-green">Posted</span>
+              {% elif t.status == "Approved" %}<span class="badge badge-blue">Approved</span>
+              {% elif t.status == "Pending" %}<span class="badge badge-amber">Pending</span>
+              {% elif t.status == "Voided" %}<span class="badge badge-gray">Voided</span>
+              {% else %}<span class="badge badge-gray">{{ t.status }}</span>{% endif %}
+            </td>
+            <td style="font-size:11px;color:#ADB5BD;font-family:monospace">{{ t.foapal_code|default:"—"|truncatechars:20 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<div class="empty-state"><p>No transactions found.</p></div>{% endif %}
+  </div>
+  <!-- Top FOAPAL strings -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">Top FOAPAL Strings</span></div>
+    {% if foapal_rows %}
+    <div style="padding:.5rem 0">
+      {% for f in foapal_rows %}
+      <div style="padding:.625rem 1.25rem;border-bottom:1px solid #F1F3F5">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <p style="font-size:11px;font-family:monospace;font-weight:600;color:#212529">{{ f.foapal_code|default:"—" }}</p>
+            <p style="font-size:11px;color:#ADB5BD">F:{{ f.fund_code|default:"—" }} O:{{ f.org_code|default:"—" }} A:{{ f.acct_code|default:"—" }}</p>
+          </div>
+          <div style="text-align:right;flex-shrink:0;margin-left:.5rem">
+            <p style="font-size:12px;font-weight:600;color:#212529">{{ f.tx_count }} txns</p>
+            <p style="font-size:11px;color:#ADB5BD">${{ f.total_amount|default:0|floatformat:0 }}</p>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}<div class="empty-state"><p>No FOAPAL data found.</p></div>{% endif %}
+  </div>
+</div>
+{% endblock %}
