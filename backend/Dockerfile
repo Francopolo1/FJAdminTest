@@ -2,10 +2,10 @@ FROM python:3.12
 
 WORKDIR /app
 
-COPY requirements/base.txt .
+COPY requirements/ requirements/
 
-RUN pip install -r base.txt
+RUN pip install --no-cache-dir -r requirements/prod.txt
 
 COPY . .
 
-CMD ["gunicorn","config.wsgi:application","--bind","0.0.0.0:8000"]
+CMD ["sh", "-c", "python manage.py collectstatic --noinput && python manage.py sync_postgres_schema && gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000}"]
