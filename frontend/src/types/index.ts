@@ -351,6 +351,7 @@ export interface ChecklistProgressItem {
   category: string | null;
   is_required: boolean;
   options: string[] | null;
+  default_value: string | null;
   example_url: string | null;
   answered: boolean;
   response_id: string | null;

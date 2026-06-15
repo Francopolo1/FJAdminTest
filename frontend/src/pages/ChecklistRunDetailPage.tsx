@@ -36,6 +36,17 @@ interface ViolationFormState {
   date: string;
 }
 
+function normalizeDefaultValue(defaultValue: string | null): string {
+  if (!defaultValue) return "";
+  try {
+    const parsed = JSON.parse(defaultValue);
+    if (typeof parsed === "string") return parsed;
+  } catch {
+    // not JSON-encoded, use as-is
+  }
+  return defaultValue;
+}
+
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -105,7 +116,7 @@ export function ChecklistRunDetailPage() {
         const next: Record<string, AnswerState> = {};
         for (const item of progressData.items) {
           next[item.item_id] = prev[item.item_id] ?? {
-            value: item.response_value ?? "",
+            value: item.response_value ?? (item.response_type === "MultiChoice" ? normalizeDefaultValue(item.default_value) : ""),
             notes: item.notes ?? "",
             boxFolderUrl: item.box_folder_url ?? "",
           };
