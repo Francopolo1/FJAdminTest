@@ -1,12 +1,18 @@
 from pathlib import Path
 from decouple import config
 from datetime import timedelta
+import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config("SECRET_KEY", default="dev-secret-key")
 DEBUG      = config("DEBUG", default=False, cast=bool)
 ALLOWED_HOSTS = ["*"]
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+CSRF_TRUSTED_ORIGINS = [
+    "https://*.up.railway.app",
+]
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -20,6 +26,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "django_filters",
     "corsheaders",
+    "anymail",
     # local
     "apps.core",
     "apps.workflows",
@@ -33,6 +40,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -63,20 +71,27 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 # ── SQL Server database ────────────────────────────────────────────────────
-DATABASES = {
-    "default": {
-        "ENGINE": "mssql",
-        "NAME":   config("DB_NAME",     default="FJADMINDBMODEL"),
-        "HOST":   config("DB_HOST",     default="JOHNSON_OFFICE"),
-        "PORT":   config("DB_PORT",     default="1433"),
-        "USER":   config("DB_USER",     default="Mulesoft"),
-        "PASSWORD": config("DB_PASSWORD", default="Mulesoft1"),
-        "OPTIONS": {
-            "driver": "ODBC Driver 17 for SQL Server",
-            "extra_params": "TrustServerCertificate=yes",
-        },
+DATABASE_URL = config("DATABASE_URL", default="")
+
+if DATABASE_URL:
+    DATABASES = {
+        "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600),
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "mssql",
+            "NAME":   config("DB_NAME",     default="FJADMINDBMODEL"),
+            "HOST":   config("DB_HOST",     default="JOHNSON_OFFICE"),
+            "PORT":   config("DB_PORT",     default="1433"),
+            "USER":   config("DB_USER",     default="Mulesoft"),
+            "PASSWORD": config("DB_PASSWORD", default="Mulesoft1"),
+            "OPTIONS": {
+                "driver": "ODBC Driver 17 for SQL Server",
+                "extra_params": "TrustServerCertificate=yes",
+            },
+        }
+    }
 
 AUTH_USER_MODEL = "core.AuthUser"
 
@@ -95,6 +110,14 @@ USE_TZ        = True
 STATIC_URL  = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 MEDIA_URL  = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
@@ -107,9 +130,19 @@ LOGOUT_REDIRECT_URL = "/auth/login/"
 ALLOW_REGISTRATION   = True   # set True to enable /auth/register/
 REQUIRE_APPROVAL     = False   # set True to require admin approval for new accounts
 PASSWORD_RESET_TIMEOUT = 86400  # 24 hours
-DEFAULT_FROM_EMAIL   = "noreply@fjadmin.local"
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-FRONTEND_BASE_URL = "http://localhost:5173"
+DEFAULT_FROM_EMAIL   = config("DEFAULT_FROM_EMAIL", default="noreply@fjadmin.local")
+FRONTEND_BASE_URL    = config("FRONTEND_BASE_URL", default="http://localhost:5173")
+
+EMAIL_BACKEND = config("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
+EMAIL_HOST       = config("EMAIL_HOST", default="")
+EMAIL_PORT       = config("EMAIL_PORT", default=587, cast=int)
+EMAIL_HOST_USER  = config("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS    = config("EMAIL_USE_TLS", default=True, cast=bool)
+
+ANYMAIL = {
+    "RESEND_API_KEY": config("RESEND_API_KEY", default=""),
+}
 
 # ── DRF ───────────────────────────────────────────────────────────────────
 REST_FRAMEWORK = {

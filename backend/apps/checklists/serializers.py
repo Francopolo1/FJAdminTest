@@ -226,6 +226,7 @@ class ChecklistProgressItemSerializer(serializers.Serializer):
     category         = serializers.CharField(allow_null=True)
     is_required      = serializers.BooleanField()
     options          = serializers.ListField(child=serializers.CharField(), allow_null=True)
+    default_value    = serializers.CharField(allow_null=True)
     example_url      = serializers.CharField(allow_null=True)
     answered         = serializers.BooleanField()
     response_id      = serializers.CharField(allow_null=True)

@@ -539,6 +539,7 @@ class ChecklistRunViewSet(viewsets.ReadOnlyModelViewSet):
                 "category":       item.category,
                 "is_required":    item.is_required,
                 "options":        item.options,
+                "default_value":  item.default_value,
                 "example_url":    item.example_url,
                 "answered":       is_answered,
                 "response_id":    resp.pk if resp else None,

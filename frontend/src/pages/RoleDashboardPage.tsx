@@ -5,6 +5,7 @@ import { StatusBadge } from "../components/ui/StatusBadge";
 import { useAuth } from "../contexts/AuthContext";
 import {
   fetchInstanceCount,
+  fetchInstanceDistributions,
   fetchOverdueTaskCount,
   fetchRecentInstances,
   fetchTaskCount,
@@ -17,6 +18,7 @@ import type {
   ChecklistRunListItem,
   ComplianceSummary,
   FinancialsSummary,
+  InstanceDistributions,
   UserRole,
   WorkflowInstance,
   WorkflowTask,
@@ -43,15 +45,44 @@ interface Stats {
 }
 
 // Which extra panels each role's dashboard shows, beyond the core stat grid.
-const PANELS: Record<UserRole, { recentInstances?: boolean; myTasks?: boolean; checklists?: boolean; compliance?: boolean; financials?: boolean }> = {
-  admin:             { recentInstances: true, compliance: true, financials: true },
-  director_manager:  { recentInstances: true, compliance: true, financials: true },
-  supervisor:        { recentInstances: true, myTasks: true },
-  inspector:         { myTasks: true, checklists: true },
-  it_staff:          { recentInstances: true },
-  support_staff:     { myTasks: true, checklists: true },
-  readonly:          { recentInstances: true, compliance: true, financials: true },
+const PANELS: Record<UserRole, { recentInstances?: boolean; myTasks?: boolean; checklists?: boolean; compliance?: boolean; financials?: boolean; distributions?: boolean }> = {
+  admin:             { recentInstances: true, compliance: true, financials: true, distributions: true },
+  director_manager:  { recentInstances: true, compliance: true, financials: true, distributions: true },
+  supervisor:        { recentInstances: true, myTasks: true, distributions: true },
+  inspector:         { myTasks: true, checklists: true, distributions: true },
+  it_staff:          { recentInstances: true, distributions: true },
+  support_staff:     { myTasks: true, checklists: true, distributions: true },
+  readonly:          { recentInstances: true, compliance: true, financials: true, distributions: true },
 };
+
+function DistributionBars<T extends { count: number }>({ items, getLabel }: { items: T[]; getLabel: (item: T) => string }) {
+  if (items.length === 0) {
+    return <div className="empty-state"><p>No data yet.</p></div>;
+  }
+  const max = Math.max(...items.map((item) => item.count), 1);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: ".5rem" }}>
+      {items.map((item, index) => (
+        <div key={index}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".875rem", marginBottom: ".15rem" }}>
+            <span>{getLabel(item)}</span>
+            <span>{item.count}</span>
+          </div>
+          <div style={{ background: "var(--color-border, #e5e7eb)", borderRadius: "4px", height: "8px" }}>
+            <div
+              style={{
+                width: `${(item.count / max) * 100}%`,
+                background: "var(--color-primary, #2563eb)",
+                borderRadius: "4px",
+                height: "8px",
+              }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function RoleDashboardPage() {
   const { user } = useAuth();
@@ -64,6 +95,7 @@ export function RoleDashboardPage() {
   const [checklistRuns, setChecklistRuns] = useState<ChecklistRunListItem[]>([]);
   const [compliance, setCompliance] = useState<ComplianceSummary | null>(null);
   const [financials, setFinancials] = useState<FinancialsSummary | null>(null);
+  const [distributions, setDistributions] = useState<InstanceDistributions | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -80,12 +112,13 @@ export function RoleDashboardPage() {
           fetchOverdueTaskCount(),
         ]);
 
-        const [recentInstances, taskPage, runsPage, complianceSummary, financialsSummary] = await Promise.all([
+        const [recentInstances, taskPage, runsPage, complianceSummary, financialsSummary, distributionData] = await Promise.all([
           panels.recentInstances ? fetchRecentInstances(5) : Promise.resolve([]),
           panels.myTasks ? fetchTasks({ pageSize: 5, ordering: "due_date" }) : Promise.resolve(null),
           panels.checklists ? fetchChecklistRuns({ pageSize: 5 }) : Promise.resolve(null),
           panels.compliance ? fetchComplianceSummary() : Promise.resolve(null),
           panels.financials ? fetchFinancialsSummary() : Promise.resolve(null),
+          panels.distributions ? fetchInstanceDistributions() : Promise.resolve(null),
         ]);
 
         if (cancelled) return;
@@ -95,6 +128,7 @@ export function RoleDashboardPage() {
         setChecklistRuns(runsPage?.results ?? []);
         setCompliance(complianceSummary);
         setFinancials(financialsSummary);
+        setDistributions(distributionData);
       } catch {
         if (!cancelled) setError("Unable to load dashboard data.");
       } finally {
@@ -106,7 +140,7 @@ export function RoleDashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [panels.recentInstances, panels.myTasks, panels.checklists, panels.compliance, panels.financials]);
+  }, [panels.recentInstances, panels.myTasks, panels.checklists, panels.compliance, panels.financials, panels.distributions]);
 
   const statCards = role === "supervisor" || role === "inspector" || role === "support_staff"
     ? [
@@ -135,6 +169,33 @@ export function RoleDashboardPage() {
               <StatCard key={card.label} label={card.label} value={card.value} color={card.color} />
             ))}
           </div>
+
+          {panels.distributions && distributions && (
+            <div className="detail-grid" style={{ marginBottom: "1.25rem" }}>
+              <div className="card">
+                <div className="card-header">
+                  <span className="card-title">Requests by Program</span>
+                </div>
+                <div className="card-body">
+                  <DistributionBars
+                    items={distributions.by_program}
+                    getLabel={(item) => item.program_title || item.program_code || "Unassigned"}
+                  />
+                </div>
+              </div>
+              <div className="card">
+                <div className="card-header">
+                  <span className="card-title">Requests by Activity</span>
+                </div>
+                <div className="card-body">
+                  <DistributionBars
+                    items={distributions.by_activity}
+                    getLabel={(item) => item.activity || "Unassigned"}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {panels.compliance && compliance && (
             <div className="card" style={{ marginBottom: "1.25rem" }}>

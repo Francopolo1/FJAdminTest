@@ -279,6 +279,22 @@ export interface StatusDistribution {
   count: number;
 }
 
+export interface ProgramDistributionItem {
+  program_code: string | null;
+  program_title: string | null;
+  count: number;
+}
+
+export interface ActivityDistributionItem {
+  activity: string | null;
+  count: number;
+}
+
+export interface InstanceDistributions {
+  by_program: ProgramDistributionItem[];
+  by_activity: ActivityDistributionItem[];
+}
+
 export interface DashboardStats {
   instances: {
     total: number;
@@ -351,6 +367,7 @@ export interface ChecklistProgressItem {
   category: string | null;
   is_required: boolean;
   options: string[] | null;
+  default_value: string | null;
   example_url: string | null;
   answered: boolean;
   response_id: string | null;
