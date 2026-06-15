@@ -231,6 +231,8 @@ export interface WorkflowTask {
   due_date: string | null;
   completed_at: string | null;
   hours_remaining: number | null;
+  program_title?: string | null;
+  activity?: string | null;
 }
 
 export interface WorkflowInstance {
