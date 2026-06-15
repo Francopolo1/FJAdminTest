@@ -55,7 +55,7 @@ const PANELS: Record<UserRole, { recentInstances?: boolean; myTasks?: boolean; c
   readonly:          { recentInstances: true, compliance: true, financials: true, distributions: true },
 };
 
-function DistributionBars({ items, getLabel }: { items: { count: number }[]; getLabel: (item: { count: number }) => string }) {
+function DistributionBars<T extends { count: number }>({ items, getLabel }: { items: T[]; getLabel: (item: T) => string }) {
   if (items.length === 0) {
     return <div className="empty-state"><p>No data yet.</p></div>;
   }
@@ -179,10 +179,7 @@ export function RoleDashboardPage() {
                 <div className="card-body">
                   <DistributionBars
                     items={distributions.by_program}
-                    getLabel={(item) => {
-                      const program = item as { program_code: string | null; program_title: string | null };
-                      return program.program_title || program.program_code || "Unassigned";
-                    }}
+                    getLabel={(item) => item.program_title || item.program_code || "Unassigned"}
                   />
                 </div>
               </div>
@@ -193,7 +190,7 @@ export function RoleDashboardPage() {
                 <div className="card-body">
                   <DistributionBars
                     items={distributions.by_activity}
-                    getLabel={(item) => (item as { activity: string | null }).activity || "Unassigned"}
+                    getLabel={(item) => item.activity || "Unassigned"}
                   />
                 </div>
               </div>
