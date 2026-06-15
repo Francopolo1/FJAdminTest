@@ -173,6 +173,40 @@ class WorkflowInstanceViewSet(viewsets.ModelViewSet):
         ).values("trigger_event", "transition_name", "to_step__step_name")
         return Response(list(transitions))
 
+    @action(detail=False, methods=["get"], url_path="distributions")
+    def distributions(self, request):
+        from django.db.models import Count, F, Q
+        from apps.core.access import visible_user_ids
+
+        qs = WorkflowInstance.objects.all()
+        if not request.user.is_staff:
+            user_ids = visible_user_ids(request.user)
+            qs = qs.filter(
+                Q(initiated_by_id__in=user_ids) | Q(tasks__assigned_to_id__in=user_ids)
+            )
+
+        by_program = (
+            qs.annotate(
+                program_code=F("program_facility__program_facility_type__program__code"),
+                program_title=F("program_facility__program_facility_type__program__title"),
+            )
+            .values("program_code", "program_title")
+            .annotate(count=Count("instance_id", distinct=True))
+            .order_by("-count")
+        )
+        by_activity = (
+            qs.annotate(
+                activity=F("workflow__program_facility_type_activity__description"),
+            )
+            .values("activity")
+            .annotate(count=Count("instance_id", distinct=True))
+            .order_by("-count")
+        )
+        return Response({
+            "by_program": list(by_program),
+            "by_activity": list(by_activity),
+        })
+
 
 class WorkflowTaskViewSet(viewsets.ModelViewSet):
     serializer_class   = WorkflowTaskSerializer

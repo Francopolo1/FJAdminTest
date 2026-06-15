@@ -2,6 +2,7 @@ import { api } from "./api";
 import type {
   AuditLogEntry,
   AvailableTransition,
+  InstanceDistributions,
   Paginated,
   WorkflowInstance,
   WorkflowInstanceDetail,
@@ -107,5 +108,10 @@ export async function fetchTasks(params: TaskListParams = {}): Promise<Paginated
       ordering: params.ordering,
     },
   });
+  return data;
+}
+
+export async function fetchInstanceDistributions(): Promise<InstanceDistributions> {
+  const { data } = await api.get<InstanceDistributions>("/api/workflows/instances/distributions/");
   return data;
 }

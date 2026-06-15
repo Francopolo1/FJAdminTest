@@ -279,6 +279,22 @@ export interface StatusDistribution {
   count: number;
 }
 
+export interface ProgramDistributionItem {
+  program_code: string | null;
+  program_title: string | null;
+  count: number;
+}
+
+export interface ActivityDistributionItem {
+  activity: string | null;
+  count: number;
+}
+
+export interface InstanceDistributions {
+  by_program: ProgramDistributionItem[];
+  by_activity: ActivityDistributionItem[];
+}
+
 export interface DashboardStats {
   instances: {
     total: number;
