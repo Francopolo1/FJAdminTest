@@ -86,6 +86,8 @@ class WorkflowInstanceViewSet(viewsets.ModelViewSet):
 
         qs = WorkflowInstance.objects.select_related(
             "workflow", "initiated_by", "current_step",
+            "workflow__program_facility_type_activity",
+            "program_facility__program_facility_type__program",
         ).prefetch_related("tasks", "checklist_runs__template")
         # Non-admins see instances initiated by, or with a task assigned to,
         # themselves or their direct reports

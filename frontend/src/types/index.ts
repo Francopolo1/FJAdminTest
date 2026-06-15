@@ -248,6 +248,8 @@ export interface WorkflowInstance {
   completed_at: string | null;
   due_date: string | null;
   program_facility: string | null;
+  program_title?: string | null;
+  activity?: string | null;
 }
 
 export interface WorkflowInstanceDetail extends WorkflowInstance {
