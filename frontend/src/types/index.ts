@@ -334,6 +334,8 @@ export interface ChecklistRunListItem {
   started_at: string | null;
   completed_at: string | null;
   created_at: string;
+  program_title?: string | null;
+  activity?: string | null;
 }
 
 export interface ChecklistResponseItem {
