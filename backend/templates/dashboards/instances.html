@@ -5,6 +5,24 @@
 {% block topbar_title %}Requests <span style="font-size:.875rem;font-weight:400;color:#6C757D">({{ total }})</span>{% endblock %}
 
 {% block content %}
+<!-- Charts -->
+<div class="charts-grid" style="margin-bottom:1.25rem">
+  <div class="card">
+    <div class="card-header"><span class="card-title">Request Status</span></div>
+    <div class="card-body"><div class="chart-container"><canvas id="statusChart"></canvas></div></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">Requests by Priority</span></div>
+    <div class="card-body"><div class="chart-container"><canvas id="priorityChart"></canvas></div></div>
+  </div>
+  {% if category_dist %}
+  <div class="card">
+    <div class="card-header"><span class="card-title">Requests by Category</span></div>
+    <div class="card-body"><div class="chart-container"><canvas id="categoryChart"></canvas></div></div>
+  </div>
+  {% endif %}
+</div>
+
 <!-- Filters -->
 <div class="card" style="margin-bottom:1rem">
   <div class="card-body" style="padding:.875rem 1.25rem">
@@ -98,4 +116,48 @@
 {% else %}
 <div class="card"><div class="empty-state"><h3 style="font-size:1rem;font-weight:600;color:#343A40">No requests found</h3><p>Adjust your filters or submit a new request.</p></div></div>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const statusData   = {{ status_dist_json|safe }};
+const priorityData = {{ priority_dist_json|safe }};
+
+new Chart(document.getElementById('statusChart'), {
+  type: 'doughnut',
+  data: {
+    labels: statusData.map(d => d.label),
+    datasets: [{ data: statusData.map(d => d.count), backgroundColor: statusData.map(d => d.color), borderWidth: 2, borderColor: '#fff' }]
+  },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 12 } } } } }
+});
+
+new Chart(document.getElementById('priorityChart'), {
+  type: 'bar',
+  data: {
+    labels: priorityData.map(d => d.label),
+    datasets: [{ label: 'Requests', data: priorityData.map(d => d.count), backgroundColor: '#3B82F6', borderRadius: 6 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#F1F3F5' } } }
+  }
+});
+
+{% if category_dist %}
+new Chart(document.getElementById('categoryChart'), {
+  type: 'bar',
+  data: {
+    labels: [{% for c in category_dist %}"{{ c.category }}"{% if not forloop.last %},{% endif %}{% endfor %}],
+    datasets: [{ label: 'Count', data: [{% for c in category_dist %}{{ c.count }}{% if not forloop.last %},{% endif %}{% endfor %}], backgroundColor: '#10B981', borderRadius: 6 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+    plugins: { legend: { display: false } },
+    scales: { x: { beginAtZero: true, grid: { color: '#F1F3F5' } }, y: { grid: { display: false } } }
+  }
+});
+{% endif %}
+</script>
 {% endblock %}
