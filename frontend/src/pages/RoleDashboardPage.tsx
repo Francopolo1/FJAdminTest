@@ -144,11 +144,11 @@ export function RoleDashboardPage() {
 
         const [recentInstances, taskPage, runsPage, complianceSummary, financialsSummary, distributionData] = await Promise.all([
           panels.recentInstances ? fetchRecentInstances(5) : Promise.resolve([]),
-          panels.myTasks ? fetchTasks({ pageSize: 5, ordering: "due_date" }).catch((e: unknown) => { throw new Error(`tasks: ${e instanceof Error ? e.message : e}`); }) : Promise.resolve(null),
-          panels.checklists ? fetchChecklistRuns({ pageSize: 5 }).catch((e: unknown) => { throw new Error(`checklists: ${e instanceof Error ? e.message : e}`); }) : Promise.resolve(null),
-          panels.compliance ? fetchComplianceSummary().catch((e: unknown) => { throw new Error(`compliance: ${e instanceof Error ? e.message : e}`); }) : Promise.resolve(null),
-          panels.financials ? fetchFinancialsSummary().catch((e: unknown) => { throw new Error(`financials: ${e instanceof Error ? e.message : e}`); }) : Promise.resolve(null),
-          panels.distributions ? fetchInstanceDistributions().catch((e: unknown) => { throw new Error(`distributions: ${e instanceof Error ? e.message : e}`); }) : Promise.resolve(null),
+          panels.myTasks ? fetchTasks({ pageSize: 5, ordering: "due_date" }) : Promise.resolve(null),
+          panels.checklists ? fetchChecklistRuns({ pageSize: 5 }) : Promise.resolve(null),
+          panels.compliance ? fetchComplianceSummary() : Promise.resolve(null),
+          panels.financials ? fetchFinancialsSummary() : Promise.resolve(null),
+          panels.distributions ? fetchInstanceDistributions() : Promise.resolve(null),
         ]);
 
         if (cancelled) return;
