@@ -318,7 +318,7 @@ class ChecklistRunViewSet(viewsets.ReadOnlyModelViewSet):
                 "instance__initiated_by",
                 "instance__workflow__program_facility_type_activity",
                 "instance__program_facility__program_facility_type__program",
-                "instance__program_facility__facility",
+                "instance__program_facility__facility__location",
                 "task",
             )
             .prefetch_related(

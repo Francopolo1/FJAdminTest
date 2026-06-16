@@ -357,6 +357,12 @@ export interface ChecklistResponseItem {
 export interface ChecklistRunDetail extends ChecklistRunListItem {
   template_description: string | null;
   is_blocking: boolean;
+  facility_address: string | null;
+  facility_city_state_zip: string | null;
+  facility_phone: string | null;
+  license_number: string | null;
+  license_expire_date: string | null;
+  tracking_id: string | null;
   responses: ChecklistResponseItem[];
 }
 
