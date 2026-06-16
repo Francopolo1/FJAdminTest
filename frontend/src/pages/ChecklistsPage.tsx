@@ -22,6 +22,31 @@ const RUN_STATUS_BADGE: Record<string, string> = {
   Skipped: "badge-amber",
 };
 
+interface ChecklistRunGroup {
+  key: string;
+  programTitle: string;
+  activity: string;
+  runs: ChecklistRunListItem[];
+}
+
+function groupChecklistRuns(runs: ChecklistRunListItem[]): ChecklistRunGroup[] {
+  const groups = new Map<string, ChecklistRunGroup>();
+  for (const run of runs) {
+    const programTitle = run.program_title || "Unassigned Program";
+    const activity = run.activity || "Unassigned Activity";
+    const key = `${programTitle}|${activity}`;
+    let group = groups.get(key);
+    if (!group) {
+      group = { key, programTitle, activity, runs: [] };
+      groups.set(key, group);
+    }
+    group.runs.push(run);
+  }
+  return [...groups.values()].sort((a, b) =>
+    a.programTitle.localeCompare(b.programTitle) || a.activity.localeCompare(b.activity),
+  );
+}
+
 export function ChecklistsPage() {
   const [runs, setRuns] = useState<ChecklistRunListItem[]>([]);
   const [count, setCount] = useState(0);
@@ -78,54 +103,53 @@ export function ChecklistsPage() {
         </div>
 
         <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Request</th>
-                <th>Workflow</th>
-                <th>Checklist</th>
-                <th>Status</th>
-                <th>Required</th>
-                <th>Progress</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={6}>
-                    <div className="empty-state"><p>Loading…</p></div>
-                  </td>
-                </tr>
-              ) : runs.length === 0 ? (
-                <tr>
-                  <td colSpan={6}>
-                    <div className="empty-state"><p>No checklist runs found.</p></div>
-                  </td>
-                </tr>
-              ) : (
-                runs.map((run) => (
-                  <tr key={run.run_id}>
-                    <td>{run.reference_no}</td>
-                    <td>{run.workflow_name}</td>
-                    <td>
-                      <Link to={`/checklists/${run.run_id}`}>{run.template_title}</Link>
-                    </td>
-                    <td><span className={`badge ${RUN_STATUS_BADGE[run.status] ?? "badge-gray"}`}>{run.status}</span></td>
-                    <td>{run.blocks_advance ? "Yes" : "No"}</td>
-                    <td>
-                      <div className="progress" style={{ width: 120 }}>
-                        <div
-                          className={`progress-fill${run.completion_pct >= 100 ? " fill-green" : ""}`}
-                          style={{ width: `${run.completion_pct}%` }}
-                        />
-                      </div>
-                      <span style={{ fontSize: 12, color: "var(--ink-500)" }}>{run.answered_items}/{run.total_items}</span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+          {isLoading ? (
+            <div className="empty-state"><p>Loading…</p></div>
+          ) : runs.length === 0 ? (
+            <div className="empty-state"><p>No checklist runs found.</p></div>
+          ) : (
+            groupChecklistRuns(runs).map((group) => (
+              <div key={group.key} style={{ marginBottom: "1.5rem" }}>
+                <h3 style={{ margin: "0 0 .5rem" }}>
+                  {group.programTitle} — {group.activity}
+                </h3>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Request</th>
+                      <th>Workflow</th>
+                      <th>Checklist</th>
+                      <th>Status</th>
+                      <th>Required</th>
+                      <th>Progress</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {group.runs.map((run) => (
+                      <tr key={run.run_id}>
+                        <td>{run.reference_no}</td>
+                        <td>{run.workflow_name}</td>
+                        <td>
+                          <Link to={`/checklists/${run.run_id}`}>{run.template_title}</Link>
+                        </td>
+                        <td><span className={`badge ${RUN_STATUS_BADGE[run.status] ?? "badge-gray"}`}>{run.status}</span></td>
+                        <td>{run.blocks_advance ? "Yes" : "No"}</td>
+                        <td>
+                          <div className="progress" style={{ width: 120 }}>
+                            <div
+                              className={`progress-fill${run.completion_pct >= 100 ? " fill-green" : ""}`}
+                              style={{ width: `${run.completion_pct}%` }}
+                            />
+                          </div>
+                          <span style={{ fontSize: 12, color: "var(--ink-500)" }}>{run.answered_items}/{run.total_items}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))
+          )}
         </div>
 
         <Pagination page={page} pageSize={PAGE_SIZE} count={count} onPageChange={setPage} />

@@ -164,6 +164,12 @@ class ChecklistRunListSerializer(serializers.ModelSerializer):
     blocks_advance  = serializers.BooleanField(source="template.blocks_advance", read_only=True)
     workflow_name   = serializers.CharField(source="instance.workflow.name",     read_only=True)
     reference_no    = serializers.CharField(source="instance.reference_no",      read_only=True)
+    program_title   = serializers.CharField(
+        source="instance.program_facility.program_facility_type.program.title", read_only=True, default=None,
+    )
+    activity        = serializers.CharField(
+        source="instance.workflow.program_facility_type_activity.description", read_only=True, default=None,
+    )
 
     class Meta:
         model  = ChecklistRun
@@ -175,6 +181,7 @@ class ChecklistRunListSerializer(serializers.ModelSerializer):
             "answered_items", "answered_required",
             "completion_pct", "required_completion_pct",
             "started_at", "completed_at", "created_at",
+            "program_title", "activity",
         ]
 
 

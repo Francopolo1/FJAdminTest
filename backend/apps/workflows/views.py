@@ -86,6 +86,8 @@ class WorkflowInstanceViewSet(viewsets.ModelViewSet):
 
         qs = WorkflowInstance.objects.select_related(
             "workflow", "initiated_by", "current_step",
+            "workflow__program_facility_type_activity",
+            "program_facility__program_facility_type__program",
         ).prefetch_related("tasks", "checklist_runs__template")
         # Non-admins see instances initiated by, or with a task assigned to,
         # themselves or their direct reports
@@ -218,7 +220,9 @@ class WorkflowTaskViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = WorkflowTask.objects.select_related(
-            "instance", "step", "assigned_to", "assigned_by", "delegated_to"
+            "instance", "step", "assigned_to", "assigned_by", "delegated_to",
+            "instance__workflow__program_facility_type_activity",
+            "instance__program_facility__program_facility_type__program",
         )
         if not self.request.user.is_staff:
             from apps.core.access import visible_user_ids

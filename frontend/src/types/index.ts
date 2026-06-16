@@ -231,6 +231,8 @@ export interface WorkflowTask {
   due_date: string | null;
   completed_at: string | null;
   hours_remaining: number | null;
+  program_title?: string | null;
+  activity?: string | null;
 }
 
 export interface WorkflowInstance {
@@ -248,6 +250,8 @@ export interface WorkflowInstance {
   completed_at: string | null;
   due_date: string | null;
   program_facility: string | null;
+  program_title?: string | null;
+  activity?: string | null;
 }
 
 export interface WorkflowInstanceDetail extends WorkflowInstance {
@@ -330,6 +334,8 @@ export interface ChecklistRunListItem {
   started_at: string | null;
   completed_at: string | null;
   created_at: string;
+  program_title?: string | null;
+  activity?: string | null;
 }
 
 export interface ChecklistResponseItem {
