@@ -159,8 +159,11 @@ export function RoleDashboardPage() {
         setCompliance(complianceSummary);
         setFinancials(financialsSummary);
         setDistributions(distributionData);
-      } catch {
-        if (!cancelled) setError("Unable to load dashboard data.");
+      } catch (err: unknown) {
+        if (!cancelled) {
+          const msg = err instanceof Error ? err.message : String(err);
+          setError(`Unable to load dashboard data: ${msg}`);
+        }
       } finally {
         if (!cancelled) setIsLoading(false);
       }
