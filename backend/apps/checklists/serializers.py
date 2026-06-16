@@ -170,6 +170,9 @@ class ChecklistRunListSerializer(serializers.ModelSerializer):
     activity        = serializers.CharField(
         source="instance.workflow.program_facility_type_activity.description", read_only=True, default=None,
     )
+    facility_name   = serializers.CharField(
+        source="instance.program_facility.facility.name", read_only=True, default=None,
+    )
 
     class Meta:
         model  = ChecklistRun
@@ -181,7 +184,7 @@ class ChecklistRunListSerializer(serializers.ModelSerializer):
             "answered_items", "answered_required",
             "completion_pct", "required_completion_pct",
             "started_at", "completed_at", "created_at",
-            "program_title", "activity",
+            "program_title", "activity", "facility_name",
         ]
 
 
