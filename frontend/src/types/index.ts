@@ -312,9 +312,9 @@ export interface CategoryDistributionItem {
 export interface InstanceDistributions {
   by_program: ProgramDistributionItem[];
   by_activity: ActivityDistributionItem[];
-  by_status: StatusDistributionItem[];
-  by_priority: PriorityDistributionItem[];
-  by_category: CategoryDistributionItem[];
+  by_status?: StatusDistributionItem[];
+  by_priority?: PriorityDistributionItem[];
+  by_category?: CategoryDistributionItem[];
 }
 
 export interface DashboardStats {

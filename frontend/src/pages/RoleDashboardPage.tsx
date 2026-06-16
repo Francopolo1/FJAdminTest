@@ -207,7 +207,7 @@ export function RoleDashboardPage() {
                   <div className="card-header"><span className="card-title">Request Status</span></div>
                   <div className="card-body">
                     <DistributionBars
-                      items={distributions.by_status}
+                      items={distributions.by_status ?? []}
                       getLabel={(item) => item.status}
                       colorMap={STATUS_COLORS}
                       getColorKey={(item) => item.status}
@@ -218,19 +218,19 @@ export function RoleDashboardPage() {
                   <div className="card-header"><span className="card-title">Requests by Priority</span></div>
                   <div className="card-body">
                     <DistributionBars
-                      items={distributions.by_priority}
+                      items={distributions.by_priority ?? []}
                       getLabel={(item) => PRIORITY_LABELS[item.priority] ?? `P${item.priority}`}
                       colorMap={PRIORITY_COLORS}
                       getColorKey={(item) => String(item.priority)}
                     />
                   </div>
                 </div>
-                {distributions.by_category.length > 0 && (
+                {(distributions.by_category ?? []).length > 0 && (
                   <div className="card">
                     <div className="card-header"><span className="card-title">Requests by Category</span></div>
                     <div className="card-body">
                       <DistributionBars
-                        items={distributions.by_category}
+                        items={distributions.by_category ?? []}
                         getLabel={(item) => item.category}
                       />
                     </div>
