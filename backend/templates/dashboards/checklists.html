@@ -4,6 +4,14 @@
 {% block topbar_breadcrumb %}<div class="topbar-breadcrumb"><span>Home</span><span>Checklists</span></div>{% endblock %}
 {% block topbar_title %}Checklist Progress{% endblock %}
 {% block content %}
+<!-- Chart -->
+<div class="charts-grid" style="margin-bottom:1.25rem;grid-template-columns:repeat(auto-fit,minmax(300px,400px))">
+  <div class="card">
+    <div class="card-header"><span class="card-title">Checklist Status</span></div>
+    <div class="card-body"><div class="chart-container"><canvas id="statusChart"></canvas></div></div>
+  </div>
+</div>
+
 <div class="stat-grid" style="grid-template-columns:repeat(5,1fr)">
   <div class="stat-card"><div class="stat-value">{{ stats.total }}</div><div class="stat-label">Total Runs</div></div>
   <div class="stat-card"><div class="stat-value" style="color:#059669">{{ stats.completed }}</div><div class="stat-label">Completed</div></div>
@@ -63,4 +71,19 @@
 {% else %}
 <div class="card"><div class="empty-state"><p>No checklists match your filters.</p></div></div>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const statusData = {{ status_dist_json|safe }};
+
+new Chart(document.getElementById('statusChart'), {
+  type: 'doughnut',
+  data: {
+    labels: statusData.map(d => d.label),
+    datasets: [{ data: statusData.map(d => d.count), backgroundColor: statusData.map(d => d.color), borderWidth: 2, borderColor: '#fff' }]
+  },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 12 } } } } }
+});
+</script>
 {% endblock %}

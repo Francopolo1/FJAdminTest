@@ -187,6 +187,21 @@ class InstanceListView(View):
             v for v in all_qs.values_list("category", flat=True) if v
         ))
 
+        # Chart distributions (reflect active filters)
+        status_dist = [
+            {"label": s["status"], "count": s["count"],
+             "color": STATUS_COLORS.get(s["status"], "#9AA1AE")}
+            for s in qs.values("status").annotate(count=Count("instance_id")).order_by("status")
+        ]
+        priority_dist = [
+            {"label": PRIORITY_LABELS.get(p["priority"], f"P{p['priority']}"), "count": p["count"]}
+            for p in qs.values("priority").annotate(count=Count("instance_id")).order_by("priority")
+        ]
+        category_dist = list(
+            qs.exclude(category__isnull=True).exclude(category="")
+            .values("category").annotate(count=Count("instance_id")).order_by("-count")[:8]
+        )
+
         context = {
             "instances":   qs[:200],
             "total":       qs.count(),
@@ -198,6 +213,9 @@ class InstanceListView(View):
             "filter_search":   search,
             "priority_labels": PRIORITY_LABELS,
             "status_colors":   STATUS_COLORS,
+            "status_dist_json":   json.dumps(status_dist),
+            "priority_dist_json": json.dumps(priority_dist),
+            "category_dist":      category_dist,
         }
         return render(request, self.template_name, context)
 
@@ -278,14 +296,31 @@ class TasksDashboardView(View):
             "in_progress":qs.filter(status="InProgress").count(),
         }
 
+        TASK_STATUS_COLORS = {
+            "Pending":    "#F59E0B",
+            "InProgress": "#2563EB",
+            "Overdue":    "#E11D48",
+        }
+        status_dist = [
+            {"label": s["status"], "count": s["count"],
+             "color": TASK_STATUS_COLORS.get(s["status"], "#9AA1AE")}
+            for s in qs.values("status").annotate(count=Count("instance_id")).order_by("status")
+        ]
+        priority_dist = [
+            {"label": PRIORITY_LABELS.get(p["priority"], f"P{p['priority']}"), "count": p["count"]}
+            for p in qs.values("priority").annotate(count=Count("task_id")).order_by("priority")
+        ]
+
         context = {
-            "tasks":           qs[:300],
-            "stats":           stats,
-            "now":             now,
-            "priority_labels": PRIORITY_LABELS,
-            "filter_status":   status_filter,
-            "filter_search":   search,
-            "overdue_only":    overdue_only,
+            "tasks":              qs[:300],
+            "stats":              stats,
+            "now":                now,
+            "priority_labels":    PRIORITY_LABELS,
+            "filter_status":      status_filter,
+            "filter_search":      search,
+            "overdue_only":       overdue_only,
+            "status_dist_json":   json.dumps(status_dist),
+            "priority_dist_json": json.dumps(priority_dist),
         }
         return render(request, self.template_name, context)
 
@@ -324,12 +359,25 @@ class ChecklistsDashboardView(View):
                                     ).count(),
         }
 
+        CHECKLIST_STATUS_COLORS = {
+            "Completed":  "#10B981",
+            "InProgress": "#2563EB",
+            "NotStarted": "#ADB5BD",
+            "Skipped":    "#F59E0B",
+        }
+        status_dist = [
+            {"label": s["run_status"], "count": s["count"],
+             "color": CHECKLIST_STATUS_COLORS.get(s["run_status"], "#9AA1AE")}
+            for s in all_qs.values("run_status").annotate(count=Count("instance_id")).order_by("run_status")
+        ]
+
         context = {
-            "checklists":     qs[:300],
-            "stats":          stats,
-            "filter_status":  status_filter,
-            "filter_search":  search,
-            "blocking_only":  blocking_only,
+            "checklists":        qs[:300],
+            "stats":             stats,
+            "filter_status":     status_filter,
+            "filter_search":     search,
+            "blocking_only":     blocking_only,
+            "status_dist_json":  json.dumps(status_dist),
         }
         return render(request, self.template_name, context)
 

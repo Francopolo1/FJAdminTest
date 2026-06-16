@@ -204,9 +204,28 @@ class WorkflowInstanceViewSet(viewsets.ModelViewSet):
             .annotate(count=Count("instance_id", distinct=True))
             .order_by("-count")
         )
+        by_status = (
+            qs.values("status")
+            .annotate(count=Count("instance_id", distinct=True))
+            .order_by("status")
+        )
+        by_priority = (
+            qs.values("priority")
+            .annotate(count=Count("instance_id", distinct=True))
+            .order_by("priority")
+        )
+        by_category = (
+            qs.exclude(category__isnull=True).exclude(category="")
+            .values("category")
+            .annotate(count=Count("instance_id", distinct=True))
+            .order_by("-count")[:8]
+        )
         return Response({
             "by_program": list(by_program),
             "by_activity": list(by_activity),
+            "by_status": list(by_status),
+            "by_priority": list(by_priority),
+            "by_category": list(by_category),
         })
 
 
