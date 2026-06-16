@@ -327,7 +327,57 @@ export function ChecklistRunDetailPage() {
           <span className={`badge ${RUN_STATUS_BADGE[run.status] ?? "badge-gray"}`}>{run.status}</span>
         </div>
         {run.template_description && <p style={{ color: "var(--ink-600)", fontSize: 13 }}>{run.template_description}</p>}
+
         <div className="detail-grid">
+          {run.facility_name && (
+            <div>
+              <div className="detail-field-label">Facility</div>
+              <div className="detail-field-value">{run.facility_name}</div>
+              {(run.facility_address || run.facility_city_state_zip) && (
+                <div style={{ fontSize: 12, color: "var(--ink-500)", marginTop: 2 }}>
+                  {run.facility_address && <div>{run.facility_address}</div>}
+                  {run.facility_city_state_zip && <div>{run.facility_city_state_zip}</div>}
+                </div>
+              )}
+            </div>
+          )}
+          {run.facility_phone && (
+            <div>
+              <div className="detail-field-label">Phone</div>
+              <div className="detail-field-value">{run.facility_phone}</div>
+            </div>
+          )}
+          {run.license_number && (
+            <div>
+              <div className="detail-field-label">License #</div>
+              <div className="detail-field-value">{run.license_number}</div>
+            </div>
+          )}
+          {run.license_expire_date && (
+            <div>
+              <div className="detail-field-label">License Expires</div>
+              <div className="detail-field-value">
+                {new Date(run.license_expire_date).toLocaleDateString()}
+              </div>
+            </div>
+          )}
+          {run.tracking_id && (
+            <div>
+              <div className="detail-field-label">Tracking ID</div>
+              <div className="detail-field-value">{run.tracking_id}</div>
+            </div>
+          )}
+          {run.started_at && (
+            <div>
+              <div className="detail-field-label">Started</div>
+              <div className="detail-field-value">
+                {new Date(run.started_at).toLocaleString()}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="detail-grid" style={{ marginTop: "1rem" }}>
           <div>
             <div className="detail-field-label">Overall Completion</div>
             <div className="progress" style={{ marginTop: 4 }}>

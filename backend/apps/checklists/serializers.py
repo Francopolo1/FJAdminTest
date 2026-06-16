@@ -170,6 +170,9 @@ class ChecklistRunListSerializer(serializers.ModelSerializer):
     activity        = serializers.CharField(
         source="instance.workflow.program_facility_type_activity.description", read_only=True, default=None,
     )
+    facility_name   = serializers.CharField(
+        source="instance.program_facility.facility.name", read_only=True, default=None,
+    )
 
     class Meta:
         model  = ChecklistRun
@@ -181,7 +184,7 @@ class ChecklistRunListSerializer(serializers.ModelSerializer):
             "answered_items", "answered_required",
             "completion_pct", "required_completion_pct",
             "started_at", "completed_at", "created_at",
-            "program_title", "activity",
+            "program_title", "activity", "facility_name",
         ]
 
 
@@ -196,6 +199,27 @@ class ChecklistRunSerializer(serializers.ModelSerializer):
     required_completion_pct = serializers.FloatField(read_only=True)
     is_blocking           = serializers.BooleanField(read_only=True)
     responses             = ChecklistResponseSerializer(many=True, read_only=True)
+    facility_name         = serializers.CharField(
+        source="instance.program_facility.facility.name", read_only=True, default=None,
+    )
+    facility_address      = serializers.CharField(
+        source="instance.program_facility.facility.location.addressline1", read_only=True, default=None,
+    )
+    facility_city_state_zip = serializers.CharField(
+        source="instance.program_facility.facility.location.citystatezip", read_only=True, default=None,
+    )
+    facility_phone        = serializers.CharField(
+        source="instance.program_facility.facility_phone", read_only=True, default=None,
+    )
+    license_number        = serializers.CharField(
+        source="instance.program_facility.license_number", read_only=True, default=None,
+    )
+    license_expire_date   = serializers.DateTimeField(
+        source="instance.program_facility.license_expire_date", read_only=True, default=None,
+    )
+    tracking_id           = serializers.CharField(
+        source="instance.program_facility.tracking_id", read_only=True, default=None,
+    )
 
     class Meta:
         model  = ChecklistRun
@@ -208,6 +232,8 @@ class ChecklistRunSerializer(serializers.ModelSerializer):
             "answered_items", "answered_required",
             "completion_pct", "required_completion_pct",
             "started_at", "completed_at", "created_at",
+            "facility_name", "facility_address", "facility_city_state_zip",
+            "facility_phone", "license_number", "license_expire_date", "tracking_id",
             "responses",
         ]
         read_only_fields = [

@@ -116,6 +116,7 @@ export function ChecklistsPage() {
                 <table>
                   <thead>
                     <tr>
+                      <th>Facility</th>
                       <th>Request</th>
                       <th>Workflow</th>
                       <th>Checklist</th>
@@ -127,6 +128,7 @@ export function ChecklistsPage() {
                   <tbody>
                     {group.runs.map((run) => (
                       <tr key={run.run_id}>
+                        <td>{run.facility_name ?? "—"}</td>
                         <td>{run.reference_no}</td>
                         <td>{run.workflow_name}</td>
                         <td>
