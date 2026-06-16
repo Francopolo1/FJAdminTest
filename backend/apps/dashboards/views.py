@@ -469,39 +469,46 @@ class FacilitiesDashboardView(View):
     template_name = "dashboards/facilities.html"
 
     def get(self, request):
-        from apps.core.models import Facility, FacilityLocation
-        from apps.financials.models import Program
+        facilities = []
+        programs   = []
+        stats      = {}
+        try:
+            from apps.core.models import Facility
+            from apps.financials.models import Program
 
-        facilities = list(
-            Facility.objects
-            .select_related("location")
-            .order_by("name")[:100]
-            .values(
-                "facility_id", "name", "activity_status", "active_date",
-                "location__addressline1", "location__city", "location__stateprovince",
-                "location__latitude", "location__longitude",
+            facilities = list(
+                Facility.objects
+                .select_related("location")
+                .order_by("name")[:100]
+                .values(
+                    "facility_id", "name", "activity_status", "active_date",
+                    "location__addressline1", "location__city", "location__stateprovince",
+                    "location__latitude", "location__longitude",
+                )
             )
-        )
-        for f in facilities:
-            f["addressline1"]  = f.pop("location__addressline1", None)
-            f["city"]          = f.pop("location__city", None)
-            f["stateprovince"] = f.pop("location__stateprovince", None)
-            f["latitude"]      = f.pop("location__latitude", None)
-            f["longitude"]     = f.pop("location__longitude", None)
+            for f in facilities:
+                f["addressline1"]  = f.pop("location__addressline1", None)
+                f["city"]          = f.pop("location__city", None)
+                f["stateprovince"] = f.pop("location__stateprovince", None)
+                f["latitude"]      = f.pop("location__latitude", None)
+                f["longitude"]     = f.pop("location__longitude", None)
 
-        programs = list(
-            Program.objects
-            .annotate(facility_count=Count("program_districts__programfacilitytype__program_facilities", distinct=True))
-            .order_by("-facility_count")
-            .values("code", "title", "is_active", "facility_count")
-        )
+            # Program → ProgramFacilityType (reverse) → ProgramFacility (reverse)
+            programs = list(
+                Program.objects
+                .annotate(facility_count=Count("programfacilitytype__programfacility", distinct=True))
+                .order_by("-facility_count")
+                .values("code", "title", "is_active", "facility_count")
+            )
 
-        stats = {
-            "total_facilities":  Facility.objects.count(),
-            "active_facilities": Facility.objects.filter(activity_status=True).count(),
-            "total_programs":    Program.objects.count(),
-            "active_programs":   Program.objects.filter(is_active=True).count(),
-        }
+            stats = {
+                "total_facilities":  Facility.objects.count(),
+                "active_facilities": Facility.objects.filter(activity_status=True).count(),
+                "total_programs":    Program.objects.count(),
+                "active_programs":   Program.objects.filter(is_active=True).count(),
+            }
+        except Exception as e:
+            stats["error"] = str(e)
 
         context = {
             "facilities": facilities,
