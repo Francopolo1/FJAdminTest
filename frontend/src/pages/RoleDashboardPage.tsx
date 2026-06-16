@@ -24,6 +24,23 @@ import type {
   WorkflowTask,
 } from "../types";
 
+const STATUS_COLORS: Record<string, string> = {
+  Approved: "#10B981",
+  InProgress: "#2563EB",
+  OnHold: "#F59E0B",
+  Rejected: "#E11D48",
+  Cancelled: "#ADB5BD",
+  Pending: "#6366F1",
+};
+
+const PRIORITY_LABELS: Record<number, string> = { 1: "Low", 2: "Normal", 3: "High", 4: "Urgent" };
+const PRIORITY_COLORS: Record<string, string> = {
+  "1": "#ADB5BD",
+  "2": "#2563EB",
+  "3": "#F59E0B",
+  "4": "#E11D48",
+};
+
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
   year: "numeric",
   month: "short",
@@ -55,31 +72,44 @@ const PANELS: Record<UserRole, { recentInstances?: boolean; myTasks?: boolean; c
   readonly:          { recentInstances: true, compliance: true, financials: true, distributions: true },
 };
 
-function DistributionBars<T extends { count: number }>({ items, getLabel }: { items: T[]; getLabel: (item: T) => string }) {
+function DistributionBars<T extends { count: number }>({
+  items,
+  getLabel,
+  colorMap,
+  getColorKey,
+}: {
+  items: T[];
+  getLabel: (item: T) => string;
+  colorMap?: Record<string, string>;
+  getColorKey?: (item: T) => string;
+}) {
   if (items.length === 0) {
     return <div className="empty-state"><p>No data yet.</p></div>;
   }
   const max = Math.max(...items.map((item) => item.count), 1);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: ".5rem" }}>
-      {items.map((item, index) => (
-        <div key={index}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".875rem", marginBottom: ".15rem" }}>
-            <span>{getLabel(item)}</span>
-            <span>{item.count}</span>
+      {items.map((item, index) => {
+        const color = colorMap && getColorKey ? (colorMap[getColorKey(item)] ?? "#2563eb") : "#2563eb";
+        return (
+          <div key={index}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".875rem", marginBottom: ".15rem" }}>
+              <span>{getLabel(item)}</span>
+              <span>{item.count}</span>
+            </div>
+            <div style={{ background: "var(--color-border, #e5e7eb)", borderRadius: "4px", height: "8px" }}>
+              <div
+                style={{
+                  width: `${(item.count / max) * 100}%`,
+                  background: color,
+                  borderRadius: "4px",
+                  height: "8px",
+                }}
+              />
+            </div>
           </div>
-          <div style={{ background: "var(--color-border, #e5e7eb)", borderRadius: "4px", height: "8px" }}>
-            <div
-              style={{
-                width: `${(item.count / max) * 100}%`,
-                background: "var(--color-primary, #2563eb)",
-                borderRadius: "4px",
-                height: "8px",
-              }}
-            />
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -171,30 +201,67 @@ export function RoleDashboardPage() {
           </div>
 
           {panels.distributions && distributions && (
-            <div className="detail-grid" style={{ marginBottom: "1.25rem" }}>
-              <div className="card">
-                <div className="card-header">
-                  <span className="card-title">Requests by Program</span>
+            <>
+              <div className="charts-grid" style={{ marginBottom: "1.25rem" }}>
+                <div className="card">
+                  <div className="card-header"><span className="card-title">Request Status</span></div>
+                  <div className="card-body">
+                    <DistributionBars
+                      items={distributions.by_status}
+                      getLabel={(item) => item.status}
+                      colorMap={STATUS_COLORS}
+                      getColorKey={(item) => item.status}
+                    />
+                  </div>
                 </div>
-                <div className="card-body">
-                  <DistributionBars
-                    items={distributions.by_program}
-                    getLabel={(item) => item.program_title || item.program_code || "Unassigned"}
-                  />
+                <div className="card">
+                  <div className="card-header"><span className="card-title">Requests by Priority</span></div>
+                  <div className="card-body">
+                    <DistributionBars
+                      items={distributions.by_priority}
+                      getLabel={(item) => PRIORITY_LABELS[item.priority] ?? `P${item.priority}`}
+                      colorMap={PRIORITY_COLORS}
+                      getColorKey={(item) => String(item.priority)}
+                    />
+                  </div>
+                </div>
+                {distributions.by_category.length > 0 && (
+                  <div className="card">
+                    <div className="card-header"><span className="card-title">Requests by Category</span></div>
+                    <div className="card-body">
+                      <DistributionBars
+                        items={distributions.by_category}
+                        getLabel={(item) => item.category}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="detail-grid" style={{ marginBottom: "1.25rem" }}>
+                <div className="card">
+                  <div className="card-header">
+                    <span className="card-title">Requests by Program</span>
+                  </div>
+                  <div className="card-body">
+                    <DistributionBars
+                      items={distributions.by_program}
+                      getLabel={(item) => item.program_title || item.program_code || "Unassigned"}
+                    />
+                  </div>
+                </div>
+                <div className="card">
+                  <div className="card-header">
+                    <span className="card-title">Requests by Activity</span>
+                  </div>
+                  <div className="card-body">
+                    <DistributionBars
+                      items={distributions.by_activity}
+                      getLabel={(item) => item.activity || "Unassigned"}
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="card">
-                <div className="card-header">
-                  <span className="card-title">Requests by Activity</span>
-                </div>
-                <div className="card-body">
-                  <DistributionBars
-                    items={distributions.by_activity}
-                    getLabel={(item) => item.activity || "Unassigned"}
-                  />
-                </div>
-              </div>
-            </div>
+            </>
           )}
 
           {panels.compliance && compliance && (

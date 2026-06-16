@@ -294,9 +294,27 @@ export interface ActivityDistributionItem {
   count: number;
 }
 
+export interface StatusDistributionItem {
+  status: string;
+  count: number;
+}
+
+export interface PriorityDistributionItem {
+  priority: number;
+  count: number;
+}
+
+export interface CategoryDistributionItem {
+  category: string;
+  count: number;
+}
+
 export interface InstanceDistributions {
   by_program: ProgramDistributionItem[];
   by_activity: ActivityDistributionItem[];
+  by_status: StatusDistributionItem[];
+  by_priority: PriorityDistributionItem[];
+  by_category: CategoryDistributionItem[];
 }
 
 export interface DashboardStats {
