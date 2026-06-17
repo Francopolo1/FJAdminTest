@@ -72,6 +72,54 @@ const PANELS: Record<UserRole, { recentInstances?: boolean; myTasks?: boolean; c
   readonly:          { recentInstances: true, compliance: true, financials: true, distributions: true },
 };
 
+const CATEGORY_PALETTE = ["#2563EB","#10B981","#F59E0B","#E11D48","#6366F1","#0EA5E9","#14B8A6","#F97316"];
+
+function DonutChart({ items, getLabel, getColor }: {
+  items: { count: number }[];
+  getLabel: (item: { count: number }, index: number) => string;
+  getColor: (item: { count: number }, index: number) => string;
+}) {
+  if (items.length === 0) return <div className="empty-state"><p>No data yet.</p></div>;
+  const total = items.reduce((s, d) => s + d.count, 0);
+  const r = 60, cx = 80, cy = 70, stroke = 24;
+  const circumference = 2 * Math.PI * r;
+  let offset = 0;
+  const slices = items.map((item, i) => {
+    const pct = total > 0 ? item.count / total : 0;
+    const dash = pct * circumference;
+    const slice = { offset, dash, color: getColor(item, i) };
+    offset += dash;
+    return slice;
+  });
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+      <svg width="160" height="140" viewBox="0 0 160 140" style={{ flexShrink: 0 }}>
+        {slices.map((s, i) => (
+          <circle key={i} cx={cx} cy={cy} r={r}
+            fill="none" stroke={s.color} strokeWidth={stroke}
+            strokeDasharray={`${s.dash} ${circumference - s.dash}`}
+            strokeDashoffset={-s.offset + circumference / 4}
+            style={{ transform: "rotate(-90deg)", transformOrigin: `${cx}px ${cy}px` }}
+          />
+        ))}
+        <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle"
+          style={{ fontSize: "18px", fontWeight: 700, fill: "var(--color-text, #111)" }}>{total}</text>
+        <text x={cx} y={cy + 16} textAnchor="middle"
+          style={{ fontSize: "10px", fill: "var(--color-muted, #6C757D)" }}>total</text>
+      </svg>
+      <div style={{ display: "flex", flexDirection: "column", gap: ".35rem", minWidth: 0 }}>
+        {items.map((item, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: ".4rem", fontSize: ".8rem" }}>
+            <span style={{ width: 10, height: 10, borderRadius: "50%", background: getColor(item, i), flexShrink: 0 }} />
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{getLabel(item, i)}</span>
+            <span style={{ marginLeft: "auto", paddingLeft: ".5rem", fontWeight: 600, color: "var(--color-muted, #6C757D)" }}>{item.count}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function DistributionBars<T extends { count: number }>({
   items,
   getLabel,
@@ -159,8 +207,11 @@ export function RoleDashboardPage() {
         setCompliance(complianceSummary);
         setFinancials(financialsSummary);
         setDistributions(distributionData);
-      } catch {
-        if (!cancelled) setError("Unable to load dashboard data.");
+      } catch (err: unknown) {
+        if (!cancelled) {
+          const msg = err instanceof Error ? err.message : String(err);
+          setError(`Unable to load dashboard data: ${msg}`);
+        }
       } finally {
         if (!cancelled) setIsLoading(false);
       }
@@ -206,22 +257,20 @@ export function RoleDashboardPage() {
                 <div className="card">
                   <div className="card-header"><span className="card-title">Request Status</span></div>
                   <div className="card-body">
-                    <DistributionBars
+                    <DonutChart
                       items={distributions.by_status ?? []}
-                      getLabel={(item) => item.status}
-                      colorMap={STATUS_COLORS}
-                      getColorKey={(item) => item.status}
+                      getLabel={(item) => (item as { status: string; count: number }).status}
+                      getColor={(item) => STATUS_COLORS[(item as { status: string; count: number }).status] ?? "#9AA1AE"}
                     />
                   </div>
                 </div>
                 <div className="card">
                   <div className="card-header"><span className="card-title">Requests by Priority</span></div>
                   <div className="card-body">
-                    <DistributionBars
+                    <DonutChart
                       items={distributions.by_priority ?? []}
-                      getLabel={(item) => PRIORITY_LABELS[item.priority] ?? `P${item.priority}`}
-                      colorMap={PRIORITY_COLORS}
-                      getColorKey={(item) => String(item.priority)}
+                      getLabel={(item) => PRIORITY_LABELS[(item as { priority: number; count: number }).priority] ?? `P${(item as { priority: number; count: number }).priority}`}
+                      getColor={(item) => PRIORITY_COLORS[String((item as { priority: number; count: number }).priority)] ?? "#9AA1AE"}
                     />
                   </div>
                 </div>
@@ -229,9 +278,10 @@ export function RoleDashboardPage() {
                   <div className="card">
                     <div className="card-header"><span className="card-title">Requests by Category</span></div>
                     <div className="card-body">
-                      <DistributionBars
+                      <DonutChart
                         items={distributions.by_category ?? []}
-                        getLabel={(item) => item.category}
+                        getLabel={(item) => (item as { category: string; count: number }).category}
+                        getColor={(_item, i) => CATEGORY_PALETTE[i % CATEGORY_PALETTE.length]}
                       />
                     </div>
                   </div>

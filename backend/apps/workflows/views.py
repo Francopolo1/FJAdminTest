@@ -215,7 +215,8 @@ class WorkflowInstanceViewSet(viewsets.ModelViewSet):
             .order_by("priority")
         )
         by_category = (
-            qs.exclude(category__isnull=True).exclude(category="")
+            qs.exclude(workflow__category__isnull=True).exclude(workflow__category="")
+            .annotate(category=F("workflow__category"))
             .values("category")
             .annotate(count=Count("instance_id", distinct=True))
             .order_by("-count")[:8]
