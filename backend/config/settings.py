@@ -111,17 +111,41 @@ USE_TZ        = True
 STATIC_URL  = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+
+# ── Media storage ──────────────────────────────────────────────────────────────
+# Set R2_* env vars to store uploads in Cloudflare R2 (S3-compatible).
+# Without them, files fall back to the local filesystem (dev only).
+R2_ACCOUNT_ID        = config("R2_ACCOUNT_ID",        default="")
+R2_ACCESS_KEY_ID     = config("R2_ACCESS_KEY_ID",     default="")
+R2_SECRET_ACCESS_KEY = config("R2_SECRET_ACCESS_KEY", default="")
+R2_BUCKET_NAME       = config("R2_BUCKET_NAME",       default="")
+R2_PUBLIC_URL        = config("R2_PUBLIC_URL",        default="")  # e.g. https://pub-xxxx.r2.dev or custom domain
+
+_use_r2 = all([R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_URL])
+
 STORAGES = {
     "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage" if _use_r2 else "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
 
-MEDIA_URL  = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+if _use_r2:
+    AWS_ACCESS_KEY_ID      = R2_ACCESS_KEY_ID
+    AWS_SECRET_ACCESS_KEY  = R2_SECRET_ACCESS_KEY
+    AWS_STORAGE_BUCKET_NAME = R2_BUCKET_NAME
+    AWS_S3_ENDPOINT_URL    = f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+    AWS_S3_CUSTOM_DOMAIN   = None  # served via R2_PUBLIC_URL, not via boto3 URL signing
+    AWS_S3_FILE_OVERWRITE  = False
+    AWS_DEFAULT_ACL        = None  # R2 uses bucket-level public access, not per-object ACLs
+    AWS_QUERYSTRING_AUTH   = False  # public bucket — no signed URLs needed
+    MEDIA_URL  = R2_PUBLIC_URL.rstrip("/") + "/"
+    MEDIA_ROOT = BASE_DIR / "media"  # unused when R2 active, kept for local fallback
+else:
+    MEDIA_URL  = "/media/"
+    MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
