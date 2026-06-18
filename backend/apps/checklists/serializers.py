@@ -24,16 +24,24 @@ from .models import ChecklistTemplate, ChecklistItem, ChecklistRun, ChecklistRes
 
 class ChecklistItemSerializer(serializers.ModelSerializer):
     """Full item serializer — used for nested writes inside a template."""
+    example_file_url = serializers.SerializerMethodField()
 
     class Meta:
         model  = ChecklistItem
         fields = [
             "item_id", "template", "item_text", "help_text",
             "response_type", "category", "display_order", "is_required",
-            "options", "default_value", "example_url",
+            "options", "default_value", "example_url", "example_file", "example_file_url",
             "created_at",
         ]
-        read_only_fields = ["item_id", "created_at"]
+        read_only_fields = ["item_id", "example_file_url", "created_at"]
+
+    def get_example_file_url(self, obj):
+        if not obj.example_file:
+            return None
+        request = self.context.get("request")
+        url = obj.example_file.url
+        return request.build_absolute_uri(url) if request else url
 
     def validate(self, data):
         # Build a temporary model instance and run full_clean to trigger
@@ -261,6 +269,7 @@ class ChecklistProgressItemSerializer(serializers.Serializer):
     options          = serializers.ListField(child=serializers.CharField(), allow_null=True)
     default_value    = serializers.CharField(allow_null=True)
     example_url      = serializers.CharField(allow_null=True)
+    example_file_url = serializers.CharField(allow_null=True)
     answered         = serializers.BooleanField()
     response_id      = serializers.CharField(allow_null=True)
     response_value   = serializers.CharField(allow_null=True)

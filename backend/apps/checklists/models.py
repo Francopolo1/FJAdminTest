@@ -149,7 +149,11 @@ class ChecklistItem(models.Model):
     default_value  = models.CharField(max_length=500, blank=True, null=True)
     example_url    = models.CharField(
         max_length=500, blank=True, null=True,
-        help_text="Link to an example of a correctly completed response for this item.",
+        help_text="External URL (e.g. Google image, YouTube) linking to an example response.",
+    )
+    example_file   = models.FileField(
+        upload_to="checklist_examples/", blank=True, null=True,
+        help_text="Uploaded image or PDF stored in cloud storage (R2). Takes precedence over example_url when set.",
     )
     created_at     = models.DateTimeField(auto_now_add=True)
 

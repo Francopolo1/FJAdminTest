@@ -419,12 +419,14 @@ export function ChecklistRunDetailPage() {
               {item.item_text}{item.is_required && <span style={{ color: "var(--red-600)" }}> *</span>}
             </div>
             {item.help_text && <div className="checklist-item-help">{item.help_text}</div>}
-            {item.example_url && (
+            {(item.example_file_url || item.example_url) && (
               <div className="checklist-item-help">
                 <button
                   type="button"
                   className="link-button"
-                  onClick={() => setPreviewUrl(resolveExampleUrl(item.example_url!))}
+                  onClick={() => setPreviewUrl(
+                    item.example_file_url ?? resolveExampleUrl(item.example_url!)
+                  )}
                 >
                   View example
                 </button>

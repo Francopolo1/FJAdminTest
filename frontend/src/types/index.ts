@@ -400,6 +400,7 @@ export interface ChecklistProgressItem {
   options: string[] | null;
   default_value: string | null;
   example_url: string | null;
+  example_file_url: string | null;
   answered: boolean;
   response_id: string | null;
   response_value: string | null;
