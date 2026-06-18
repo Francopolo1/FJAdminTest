@@ -666,8 +666,17 @@ function ExamplePreview({ url }: { url: string }) {
     );
   }
 
-  // PDF and anything else: open in a new tab rather than an iframe to avoid
-  // cross-origin / connection-refused errors when the file is on a remote server.
+  if (kind === "pdf") {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: ".5rem", width: "100%" }}>
+        <iframe src={url} title="Example" />
+        <a href={url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "var(--ink-500)" }}>
+          Open in new tab ↗
+        </a>
+      </div>
+    );
+  }
+
   return (
     <div className="example-unavailable">
       <a href={url} target="_blank" rel="noopener noreferrer" className="btn btn-primary">
