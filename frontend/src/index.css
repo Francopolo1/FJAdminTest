@@ -206,3 +206,4 @@ tbody td { padding: .625rem 1rem; color: var(--ink-700); vertical-align: middle;
 .modal-body img { max-width: 100%; max-height: 80vh; object-fit: contain; }
 .modal-body video { max-width: 100%; max-height: 80vh; }
 .modal-body iframe { width: min(80vw, 900px); height: 80vh; border: none; }
+.example-unavailable { display: flex; flex-direction: column; align-items: center; gap: .75rem; padding: 2rem; text-align: center; color: var(--ink-500); }

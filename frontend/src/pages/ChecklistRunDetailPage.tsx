@@ -626,7 +626,7 @@ export function ChecklistRunDetailPage() {
                 Close
               </button>
             </div>
-            <div className="modal-body">{renderExamplePreview(previewUrl)}</div>
+            <div className="modal-body"><ExamplePreview url={previewUrl} /></div>
           </div>
         </div>
       )}
@@ -634,25 +634,47 @@ export function ChecklistRunDetailPage() {
   );
 }
 
-function renderExamplePreview(url: string) {
-  switch (exampleKind(url)) {
-    case "image":
-      return <img src={url} alt="Example" />;
-    case "video":
+function ExamplePreview({ url }: { url: string }) {
+  const [imgError, setImgError] = useState(false);
+  const kind = exampleKind(url);
+
+  if (kind === "image") {
+    if (imgError) {
       return (
-        <video src={url} controls autoPlay>
-          Your browser does not support embedded video.
-        </video>
+        <div className="example-unavailable">
+          <p>This example image could not be loaded.</p>
+          <a href={url} target="_blank" rel="noopener noreferrer">
+            Try opening it directly
+          </a>
+        </div>
       );
-    case "pdf":
-      return <iframe src={url} title="Example" />;
-    default:
-      return (
-        <a href={url} target="_blank" rel="noopener noreferrer">
-          Open example in a new tab
-        </a>
-      );
+    }
+    return (
+      <img
+        src={url}
+        alt="Example"
+        onError={() => setImgError(true)}
+      />
+    );
   }
+
+  if (kind === "video") {
+    return (
+      <video src={url} controls autoPlay>
+        Your browser does not support embedded video.
+      </video>
+    );
+  }
+
+  // PDF and anything else: open in a new tab rather than an iframe to avoid
+  // cross-origin / connection-refused errors when the file is on a remote server.
+  return (
+    <div className="example-unavailable">
+      <a href={url} target="_blank" rel="noopener noreferrer" className="btn btn-primary">
+        Open example in a new tab ↗
+      </a>
+    </div>
+  );
 }
 
 function renderInput(
