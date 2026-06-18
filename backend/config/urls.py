@@ -35,6 +35,7 @@ urlpatterns = [
     path("api/compliance/",  include("apps.compliance.urls")),
     path("api/financials/",  include("apps.financials.urls")),
     #path("api/facilities/",  include("apps.facilities.urls")),
+    path("api/enforcement/", include("apps.enforcement.urls")),
     # HTML dashboards
     path("dashboards/",       include("apps.dashboards.urls", namespace="dashboards")),
 ]
