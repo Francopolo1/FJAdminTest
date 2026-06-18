@@ -133,14 +133,16 @@ STORAGES = {
 }
 
 if _use_r2:
-    AWS_ACCESS_KEY_ID      = R2_ACCESS_KEY_ID
-    AWS_SECRET_ACCESS_KEY  = R2_SECRET_ACCESS_KEY
+    AWS_ACCESS_KEY_ID       = R2_ACCESS_KEY_ID
+    AWS_SECRET_ACCESS_KEY   = R2_SECRET_ACCESS_KEY
     AWS_STORAGE_BUCKET_NAME = R2_BUCKET_NAME
-    AWS_S3_ENDPOINT_URL    = f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
-    AWS_S3_CUSTOM_DOMAIN   = None  # served via R2_PUBLIC_URL, not via boto3 URL signing
-    AWS_S3_FILE_OVERWRITE  = False
-    AWS_DEFAULT_ACL        = None  # R2 uses bucket-level public access, not per-object ACLs
-    AWS_QUERYSTRING_AUTH   = False  # public bucket — no signed URLs needed
+    AWS_S3_ENDPOINT_URL     = f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+    AWS_S3_REGION_NAME      = "auto"   # required by R2
+    AWS_S3_SIGNATURE_VERSION = "s3v4"  # required by R2
+    AWS_S3_CUSTOM_DOMAIN    = None     # served via R2_PUBLIC_URL, not boto3 signed URLs
+    AWS_S3_FILE_OVERWRITE   = False
+    AWS_DEFAULT_ACL         = None     # R2 uses bucket-level public access, not per-object ACLs
+    AWS_QUERYSTRING_AUTH    = False    # public bucket — no signed URLs needed
     MEDIA_URL  = R2_PUBLIC_URL.rstrip("/") + "/"
     MEDIA_ROOT = BASE_DIR / "media"  # unused when R2 active, kept for local fallback
 else:
