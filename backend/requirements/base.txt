@@ -14,3 +14,5 @@ boxsdk==3.13.0
 redis==8.0.0
 gunicorn==26.0.0
 django-anymail==13.1
+django-storages[s3]==1.14.4
+boto3==1.43.33
