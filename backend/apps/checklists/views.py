@@ -264,7 +264,7 @@ class ChecklistItemViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="upload-example", parser_classes=[MultiPartParser])
     def upload_example(self, request, pk=None):
-        """Upload an example image/PDF/video for this item and set example_url."""
+        """Upload an example image/PDF/video for this item and store it in example_file (R2/storage)."""
         item = self.get_object()
         upload = request.FILES.get("file")
         if not upload:
@@ -280,13 +280,11 @@ class ChecklistItemViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        ext = upload.name.rsplit(".", 1)[-1].lower() if "." in upload.name else ""
-        filename = f"checklist_examples/{uuid.uuid4()}.{ext}" if ext else f"checklist_examples/{uuid.uuid4()}"
-        saved_path = default_storage.save(filename, upload)
+        if item.example_file:
+            item.example_file.delete(save=False)
 
-        item.example_url = request.build_absolute_uri(default_storage.url(saved_path))
-        item.save(update_fields=["example_url"])
-        return Response(ChecklistItemSerializer(item).data)
+        item.example_file.save(upload.name, upload, save=True)
+        return Response(ChecklistItemSerializer(item, context={"request": request}).data)
 
 
 # ── ChecklistRunViewSet ───────────────────────────────────────────────────────
@@ -544,6 +542,7 @@ class ChecklistRunViewSet(viewsets.ReadOnlyModelViewSet):
                 "options":        item.options,
                 "default_value":  item.default_value,
                 "example_url":    item.example_url,
+                "example_file_url": item.example_file.url if item.example_file else None,
                 "answered":       is_answered,
                 "response_id":    resp.pk if resp else None,
                 "response_value": resp.response_value if resp else None,
