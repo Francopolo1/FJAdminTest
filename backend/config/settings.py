@@ -139,7 +139,7 @@ if _use_r2:
     AWS_S3_ENDPOINT_URL     = f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
     AWS_S3_REGION_NAME      = "auto"   # required by R2
     AWS_S3_SIGNATURE_VERSION = "s3v4"  # required by R2
-    AWS_S3_CUSTOM_DOMAIN    = None     # served via R2_PUBLIC_URL, not boto3 signed URLs
+    AWS_S3_CUSTOM_DOMAIN    = R2_PUBLIC_URL.replace("https://", "").replace("http://", "").rstrip("/")
     AWS_S3_FILE_OVERWRITE   = False
     AWS_DEFAULT_ACL         = None     # R2 uses bucket-level public access, not per-object ACLs
     AWS_QUERYSTRING_AUTH    = False    # public bucket — no signed URLs needed
