@@ -1,3 +1,4 @@
+from django.db import models
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -11,6 +12,8 @@ from .models import (
     PaymentPlanInstallment,
     FinePayment,
     PaymentReceipt,
+    FineAppeal,
+    FineWaiver,
 )
 from .serializers import (
     FineCaseListSerializer,
@@ -24,6 +27,9 @@ from .serializers import (
     FinePaymentSerializer,
     ReceivePaymentInputSerializer,
     PaymentReceiptSerializer,
+    FineAppealSerializer,
+    AppealDecisionInputSerializer,
+    FineWaiverSerializer,
 )
 from . import services
 
@@ -194,3 +200,111 @@ class FinePaymentViewSet(viewsets.ReadOnlyModelViewSet):
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(PaymentReceiptSerializer(receipt).data, status=status.HTTP_201_CREATED)
+
+
+class FineAppealViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class   = FineAppealSerializer
+    queryset = FineAppeal.objects.select_related(
+        "assessment__case",
+        "filed_by",
+        "decided_by",
+    ).order_by("-appeal_date")
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        assessment_id = self.request.query_params.get("assessment")
+        if assessment_id:
+            qs = qs.filter(assessment_id=assessment_id)
+        case_id = self.request.query_params.get("case")
+        if case_id:
+            qs = qs.filter(assessment__case_id=case_id)
+        return qs
+
+    def perform_create(self, serializer):
+        assessment = serializer.validated_data["assessment"]
+        grounds    = serializer.validated_data["grounds"]
+        services.file_appeal(
+            assessment=assessment,
+            grounds=grounds,
+            appeal_date=serializer.validated_data.get("appeal_date"),
+            hearing_date=serializer.validated_data.get("hearing_date"),
+            filed_by=self.request.user,
+        )
+
+    def create(self, request, *args, **kwargs):
+        ser = FineAppealSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        assessment = ser.validated_data["assessment"]
+        appeal = services.file_appeal(
+            assessment=assessment,
+            grounds=ser.validated_data["grounds"],
+            appeal_date=ser.validated_data.get("appeal_date"),
+            hearing_date=ser.validated_data.get("hearing_date"),
+            filed_by=request.user,
+        )
+        return Response(FineAppealSerializer(appeal).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"], url_path="decide")
+    def decide(self, request, pk=None):
+        appeal = self.get_object()
+        if appeal.status in ("Upheld", "Reduced", "Dismissed", "Withdrawn"):
+            return Response(
+                {"detail": "This appeal has already been decided."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        inp = AppealDecisionInputSerializer(data=request.data)
+        inp.is_valid(raise_exception=True)
+        d = inp.validated_data
+        try:
+            appeal = services.decide_appeal(
+                appeal=appeal,
+                status=d["status"],
+                decided_by=request.user,
+                decision_notes=d.get("decision_notes"),
+                decision_date=d.get("decision_date"),
+                adjusted_amount=d.get("adjusted_amount"),
+            )
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(FineAppealSerializer(appeal).data)
+
+
+class FineWaiverViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class   = FineWaiverSerializer
+    queryset = FineWaiver.objects.select_related(
+        "assessment__case",
+        "invoice__case",
+        "authorized_by",
+    ).order_by("-authorization_date")
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if assessment_id := self.request.query_params.get("assessment"):
+            qs = qs.filter(assessment_id=assessment_id)
+        if invoice_id := self.request.query_params.get("invoice"):
+            qs = qs.filter(invoice_id=invoice_id)
+        if case_id := self.request.query_params.get("case"):
+            qs = qs.filter(
+                models.Q(assessment__case_id=case_id) | models.Q(invoice__case_id=case_id)
+            )
+        return qs
+
+    def create(self, request, *args, **kwargs):
+        ser = FineWaiverSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        d = ser.validated_data
+        try:
+            waiver = services.apply_waiver(
+                waived_amount=d["waived_amount"],
+                reason=d["reason"],
+                assessment=d.get("assessment"),
+                invoice=d.get("invoice"),
+                authorized_by=request.user,
+                authorization_date=d.get("authorization_date"),
+                notes=d.get("notes"),
+            )
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(FineWaiverSerializer(waiver).data, status=status.HTTP_201_CREATED)
