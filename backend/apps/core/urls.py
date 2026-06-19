@@ -43,6 +43,10 @@ urlpatterns = [
         name="supervisor-direct-report-programs",
     ),
     path("facilities/filters/", FacilityFilterOptionsAPIView.as_view(), name="facility-filters"),
+    path("facilities/validate-address/", AddressValidationAPIView.as_view(), name="facility-validate-address"),
+    path("facilities/program-facility-types/", ProgramFacilityTypeListAPIView.as_view(), name="facility-pft-list"),
+    path("facilities/program-districts/", ProgramDistrictListAPIView.as_view(), name="facility-district-list"),
+    path("facilities/create/", FacilityCreateAPIView.as_view(), name="facility-create"),
     path(
         "facilities/program-facilities/<str:program_facility_id>/profile/",
         FacilityProgramFacilityProfileAPIView.as_view(),
@@ -54,10 +58,6 @@ urlpatterns = [
         name="facility-activity-start",
     ),
     path("facilities/<str:facility_id>/", FacilityDetailAPIView.as_view(), name="facility-detail"),
-    path("facilities/validate-address/", AddressValidationAPIView.as_view(), name="facility-validate-address"),
-    path("facilities/program-facility-types/", ProgramFacilityTypeListAPIView.as_view(), name="facility-pft-list"),
-    path("facilities/program-districts/", ProgramDistrictListAPIView.as_view(), name="facility-district-list"),
-    path("facilities/create/", FacilityCreateAPIView.as_view(), name="facility-create"),
     path("facilities/", FacilityListAPIView.as_view(), name="facility-list"),
     path("", include(router.urls)),
 ]
