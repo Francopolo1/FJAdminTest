@@ -74,7 +74,6 @@ class ActivityAdmin(admin.ModelAdmin):
     search_fields = ["code", "title"]
     ordering      = ["code"]
     readonly_fields = ["activity_id", "created_at", "updated_at"]
-    verbose_name_plural = "activities"
 
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
