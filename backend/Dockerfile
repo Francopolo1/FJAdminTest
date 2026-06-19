@@ -8,4 +8,4 @@ RUN pip install --no-cache-dir -r requirements/prod.txt
 
 COPY . .
 
-CMD ["sh", "-c", "python manage.py collectstatic --noinput && python manage.py sync_postgres_schema && gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000}"]
+CMD ["sh", "-c", "python manage.py collectstatic --noinput && python manage.py migrate --no-input && python manage.py sync_postgres_schema && gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000}"]
