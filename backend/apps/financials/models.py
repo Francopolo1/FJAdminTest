@@ -124,10 +124,10 @@ class Activity(models.Model):
         db_table = "activities"
         managed  = False
         ordering = ["code"]
-
+        verbose_name_plural = "activities"
     def __str__(self):
         return f"{self.code} — {self.title}"
-    verbose_name_plural = "Activities"
+    
 
 class Location(models.Model):
     """dbo.locations  (FOAPAL location codes — NOT facility_locations)"""
