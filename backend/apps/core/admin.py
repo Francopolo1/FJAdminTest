@@ -170,7 +170,7 @@ class FacilityAdmin(admin.ModelAdmin):
     list_filter   = ["activity_status", "master"]
     search_fields = ["name"]
     autocomplete_fields = ["location"]
-    verbose_name_plural = "Facilities"
+    verbose_name_plural = "facilities"
 
 @admin.register(ProgramDistricts)
 class ProgramDistrictsAdmin(admin.ModelAdmin):
@@ -200,7 +200,7 @@ class ProgramFacilityAdmin(admin.ModelAdmin):
         )}),
         ("Contact / Notes", {"fields": ("facility_phone", "comments")}),
     )
-    verbose_name_plural = "Program Facilities"
+    verbose_name_plural = "program facilities"
 
 # ── User program assignments ────────────────────────────────────────────────
 
