@@ -127,7 +127,7 @@ class Activity(models.Model):
 
     def __str__(self):
         return f"{self.code} — {self.title}"
-
+    verbose_name_plural = "Activities"
 
 class Location(models.Model):
     """dbo.locations  (FOAPAL location codes — NOT facility_locations)"""
