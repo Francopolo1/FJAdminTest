@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "../components/layout/AppLayout";
+import { useAuth } from "../contexts/AuthContext";
 import { fetchFacilities, fetchFacilityFilterOptions } from "../lib/coreApi";
 import type { FacilityFilterOptions, FacilityListItem } from "../types";
 
@@ -15,6 +16,7 @@ const SORT_COLUMNS: { key: SortColumn; label: string }[] = [
 
 export function FacilitiesPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [filterOptions, setFilterOptions] = useState<FacilityFilterOptions>({ programs: [], facility_types: [] });
   const [results, setResults] = useState<FacilityListItem[]>([]);
@@ -83,11 +85,13 @@ export function FacilitiesPage() {
     <AppLayout title="Facilities">
       {error && <div className="alert alert-error">{error}</div>}
 
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "var(--space-3)" }}>
-        <button className="btn btn-primary" onClick={() => navigate("/facilities/new")}>
-          + New Facility
-        </button>
-      </div>
+      {user?.role === "support_staff" && (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "var(--space-3)" }}>
+          <button className="btn btn-primary" onClick={() => navigate("/facilities/new")}>
+            + New Facility
+          </button>
+        </div>
+      )}
 
       <div className="card">
         <form className="form-row" onSubmit={handleSearchSubmit}>
