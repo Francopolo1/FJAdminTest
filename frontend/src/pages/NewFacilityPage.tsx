@@ -6,7 +6,6 @@ import {
   fetchFacilityFilterOptions,
   fetchProgramDistricts,
   fetchProgramFacilityTypes,
-  validateAddress,
 } from "../lib/coreApi";
 import type {
   AddressValidationResult,
@@ -137,32 +136,58 @@ export function NewFacilityPage() {
     setS3((prev) => ({ ...prev, [field]: e.target.value }));
   };
 
-  // ── Address validation ───────────────────────────────────────────────────────
+  // ── Address validation (calls Nominatim directly from the browser) ───────────
   const handleValidateAddress = async () => {
     setValidationError(null);
     setValidated(null);
     setValidating(true);
     try {
-      const result = await validateAddress({
-        address_line1: s1.address_line1,
-        city: s1.city,
-        state: s1.state,
-        postal_code: s1.postal_code,
+      const query = [s1.address_line1, s1.city, s1.state, s1.postal_code]
+        .filter(Boolean)
+        .join(", ");
+      const params = new URLSearchParams({
+        q: query,
+        format: "json",
+        addressdetails: "1",
+        limit: "1",
+        countrycodes: "us",
       });
-      if (result.valid) {
-        setValidated(result);
-        // Auto-fill geocoded values back into the form
-        setS1((prev) => ({
-          ...prev,
-          city:        result.city        ?? prev.city,
-          state:       result.state       ?? prev.state,
-          postal_code: result.postal_code ?? prev.postal_code,
-        }));
-      } else {
-        setValidationError(result.error ?? "Address could not be validated.");
+      const resp = await fetch(
+        `https://nominatim.openstreetmap.org/search?${params}`,
+        { headers: { "Accept-Language": "en" } }
+      );
+      if (!resp.ok) throw new Error("Nominatim returned an error.");
+      const results = await resp.json() as Array<{
+        lat: string; lon: string; display_name: string;
+        address: Record<string, string>;
+      }>;
+
+      if (!results.length) {
+        setValidationError("Address not found. Please verify the details and try again.");
+        return;
       }
+
+      const r    = results[0];
+      const addr = r.address ?? {};
+      const normalized: AddressValidationResult = {
+        valid:           true,
+        latitude:        parseFloat(r.lat),
+        longitude:       parseFloat(r.lon),
+        display_address: r.display_name,
+        city:     addr.city ?? addr.town ?? addr.village ?? s1.city,
+        state:    addr.state ?? s1.state,
+        postal_code: addr.postcode ?? s1.postal_code,
+        county:   addr.county ?? undefined,
+      };
+      setValidated(normalized);
+      setS1((prev) => ({
+        ...prev,
+        city:        normalized.city        ?? prev.city,
+        state:       normalized.state       ?? prev.state,
+        postal_code: normalized.postal_code ?? prev.postal_code,
+      }));
     } catch {
-      setValidationError("Address validation service is unavailable. You may continue without validation.");
+      setValidationError("Address validation is unavailable right now. You may continue without it.");
     } finally {
       setValidating(false);
     }
