@@ -715,6 +715,47 @@ class ProgramDistrictListAPIView(APIView):
         ])
 
 
+def _next_tracking_id(pft) -> str:
+    """
+    Generate the next tracking ID for a ProgramFacilityType.
+    Format: {YYYY}-{PROGRAM_CODE}-{FACILITY_TYPE_CODE}-{NNNN}
+    NNNN resets to 0001 each calendar year.
+    """
+    from django.utils import timezone as tz
+    year         = tz.now().year
+    program_code = (pft.program.code or "").strip().upper()
+    type_code    = (pft.facility_type.code or "").strip().upper()
+    prefix       = f"{year}-{program_code}-{type_code}-"
+
+    max_seq = 0
+    for tid in ProgramFacility.objects.filter(
+        tracking_id__startswith=prefix,
+    ).values_list("tracking_id", flat=True):
+        try:
+            max_seq = max(max_seq, int(tid[len(prefix):]))
+        except (ValueError, IndexError):
+            continue
+
+    return f"{prefix}{max_seq + 1:04d}"
+
+
+class NextTrackingIdAPIView(APIView):
+    """Return the next auto-generated tracking ID for a given ProgramFacilityType."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .models import ProgramFacilityType
+        pft_id = request.query_params.get("program_facility_type_id")
+        if not pft_id:
+            return Response({"detail": "program_facility_type_id is required."}, status=400)
+        try:
+            pft = ProgramFacilityType.objects.select_related("program", "facility_type").get(pk=pft_id)
+        except ProgramFacilityType.DoesNotExist:
+            return Response({"detail": "ProgramFacilityType not found."}, status=404)
+        return Response({"tracking_id": _next_tracking_id(pft)})
+
+
 class FacilityCreateAPIView(APIView):
     """
     Atomically create FacilityLocation + Facility + ProgramFacility.
@@ -766,7 +807,7 @@ class FacilityCreateAPIView(APIView):
             return Response(errors, status=400)
 
         try:
-            pft = ProgramFacilityType.objects.get(pk=program_facility_type_id)
+            pft = ProgramFacilityType.objects.select_related("program", "facility_type").get(pk=program_facility_type_id)
         except ProgramFacilityType.DoesNotExist:
             return Response({"program_facility_type_id": "Not found."}, status=400)
 
@@ -817,7 +858,7 @@ class FacilityCreateAPIView(APIView):
                 license_number        = d.get("license_number") or None,
                 license_expire_date   = d.get("license_expire_date") or None,
                 facility_phone        = d.get("facility_phone") or None,
-                tracking_id           = d.get("tracking_id") or None,
+                tracking_id           = (d.get("tracking_id") or "").strip() or _next_tracking_id(pft),
                 risk_assessment       = d.get("risk_assessment") or None,
                 start_date            = d.get("start_date") or None,
                 activity_flag         = d.get("activity_flag") or "A",

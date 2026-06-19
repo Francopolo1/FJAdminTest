@@ -125,6 +125,13 @@ export async function fetchProgramDistricts(programId?: string): Promise<Program
   return data;
 }
 
+export async function fetchNextTrackingId(programFacilityTypeId: string): Promise<string> {
+  const { data } = await api.get<{ tracking_id: string }>("/api/core/facilities/next-tracking-id/", {
+    params: { program_facility_type_id: programFacilityTypeId },
+  });
+  return data.tracking_id;
+}
+
 export async function createFacility(payload: FacilityCreatePayload): Promise<FacilityCreateResult> {
   const { data } = await api.post<FacilityCreateResult>("/api/core/facilities/create/", payload);
   return data;

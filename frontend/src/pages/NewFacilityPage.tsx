@@ -4,6 +4,7 @@ import { AppLayout } from "../components/layout/AppLayout";
 import {
   createFacility,
   fetchFacilityFilterOptions,
+  fetchNextTrackingId,
   fetchProgramDistricts,
   fetchProgramFacilityTypes,
 } from "../lib/coreApi";
@@ -214,9 +215,20 @@ export function NewFacilityPage() {
     return Object.keys(errs).length === 0;
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step === 0 && !validateStep1()) return;
-    if (step === 1 && !validateStep2()) return;
+    if (step === 1) {
+      if (!validateStep2()) return;
+      // Pre-populate tracking ID with the server-generated default
+      if (!s3.tracking_id && s2.program_facility_type_id) {
+        try {
+          const tid = await fetchNextTrackingId(s2.program_facility_type_id);
+          setS3((prev) => ({ ...prev, tracking_id: tid }));
+        } catch {
+          // Non-fatal — user can fill it in manually
+        }
+      }
+    }
     setStep((s) => s + 1);
   };
 
