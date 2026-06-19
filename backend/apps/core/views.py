@@ -602,3 +602,231 @@ class FacilityStartActivityWorkflowAPIView(APIView):
             return Response({"detail": str(e)}, status=400)
 
         return Response(WorkflowInstanceListSerializer(instance).data, status=201)
+
+
+# ── Facility creation ────────────────────────────────────────────────────────
+
+class AddressValidationAPIView(APIView):
+    """Validate and geocode an address via Nominatim (OpenStreetMap)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        import urllib.request
+        import urllib.parse
+        import json as json_mod
+
+        address_line1 = request.data.get("address_line1", "").strip()
+        city          = request.data.get("city", "").strip()
+        state         = request.data.get("state", "").strip()
+        postal_code   = request.data.get("postal_code", "").strip()
+
+        if not address_line1:
+            return Response({"valid": False, "error": "address_line1 is required."}, status=400)
+
+        query = ", ".join(filter(None, [address_line1, city, state, postal_code]))
+        params = urllib.parse.urlencode({
+            "q": query,
+            "format": "json",
+            "addressdetails": 1,
+            "limit": 1,
+            "countrycodes": "us",
+        })
+        url = f"https://nominatim.openstreetmap.org/search?{params}"
+        req = urllib.request.Request(url, headers={"User-Agent": "FJAdmin/1.0 (admin@example.com)"})
+        try:
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                results = json_mod.loads(resp.read())
+        except Exception:
+            return Response({"valid": False, "error": "Address validation service unavailable."}, status=503)
+
+        if not results:
+            return Response({"valid": False, "error": "Address not found. Please verify and try again."})
+
+        r    = results[0]
+        addr = r.get("address", {})
+        return Response({
+            "valid":           True,
+            "latitude":        float(r["lat"]),
+            "longitude":       float(r["lon"]),
+            "display_address": r.get("display_name", ""),
+            "city":     addr.get("city") or addr.get("town") or addr.get("village") or city,
+            "state":    addr.get("state", state),
+            "postal_code": addr.get("postcode", postal_code),
+            "county":   addr.get("county") or None,
+        })
+
+
+class ProgramFacilityTypeListAPIView(APIView):
+    """List ProgramFacilityTypes, optionally filtered by program."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .models import ProgramFacilityType
+        qs = (
+            ProgramFacilityType.objects
+            .select_related("program", "facility_type")
+            .order_by("program__code", "facility_type__code")
+        )
+        program_id = request.query_params.get("program")
+        if program_id:
+            qs = qs.filter(program_id=program_id)
+        return Response([
+            {
+                "program_facility_type_id":   pft.program_facility_type_id,
+                "program_id":                 pft.program_id,
+                "program_code":               pft.program.code,
+                "program_title":              pft.program.title,
+                "facility_type_id":           pft.facility_type_id,
+                "facility_type_code":         pft.facility_type.code,
+                "facility_type_description":  pft.facility_type.description,
+                "description":                pft.description,
+                "profile_template":           pft.profile_template,
+            }
+            for pft in qs
+        ])
+
+
+class ProgramDistrictListAPIView(APIView):
+    """List ProgramDistricts, optionally filtered by program."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .models import ProgramDistricts
+        qs = (
+            ProgramDistricts.objects
+            .select_related("program")
+            .order_by("program__code", "district")
+        )
+        program_id = request.query_params.get("program")
+        if program_id:
+            qs = qs.filter(program_id=program_id)
+        return Response([
+            {
+                "program_district_id": pd.program_district_id,
+                "program_id":          pd.program_id,
+                "program_code":        pd.program.code,
+                "district":            pd.district,
+                "description":         pd.description,
+            }
+            for pd in qs
+        ])
+
+
+class FacilityCreateAPIView(APIView):
+    """
+    Atomically create FacilityLocation + Facility + ProgramFacility.
+
+    Required body fields:
+      facility_name, address_line1, city, state, postal_code,
+      program_facility_type_id, program_district_id
+
+    Optional:
+      address_line2, latitude, longitude, county,
+      license_number, license_expire_date, facility_phone,
+      tracking_id, risk_assessment, start_date, activity_flag,
+      comments, profile
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from django.db import transaction as db_transaction
+        from django.utils import timezone as tz
+        from .models import FacilityLocation, Facility, ProgramFacility, ProgramFacilityType, ProgramDistricts
+
+        d = request.data
+
+        facility_name            = (d.get("facility_name") or "").strip()
+        address_line1            = (d.get("address_line1") or "").strip()
+        city                     = (d.get("city") or "").strip()
+        state                    = (d.get("state") or "").strip()
+        postal_code              = (d.get("postal_code") or "").strip()
+        program_facility_type_id = d.get("program_facility_type_id")
+        program_district_id      = d.get("program_district_id")
+
+        errors = {}
+        if not facility_name:
+            errors["facility_name"] = "This field is required."
+        if not address_line1:
+            errors["address_line1"] = "This field is required."
+        if not city:
+            errors["city"] = "This field is required."
+        if not state:
+            errors["state"] = "This field is required."
+        if not postal_code:
+            errors["postal_code"] = "This field is required."
+        if not program_facility_type_id:
+            errors["program_facility_type_id"] = "This field is required."
+        if not program_district_id:
+            errors["program_district_id"] = "This field is required."
+        if errors:
+            return Response(errors, status=400)
+
+        try:
+            pft = ProgramFacilityType.objects.get(pk=program_facility_type_id)
+        except ProgramFacilityType.DoesNotExist:
+            return Response({"program_facility_type_id": "Not found."}, status=400)
+
+        try:
+            district = ProgramDistricts.objects.get(pk=program_district_id)
+        except ProgramDistricts.DoesNotExist:
+            return Response({"program_district_id": "Not found."}, status=400)
+
+        city_state_zip = ", ".join(filter(None, [city, f"{state} {postal_code}".strip()]))
+        now = tz.now()
+
+        with db_transaction.atomic():
+            location = FacilityLocation.objects.create(
+                addressline1        = address_line1,
+                addressline2        = d.get("address_line2") or None,
+                city                = city,
+                stateprovince       = state,
+                postalcode          = postal_code,
+                citystatezip        = city_state_zip,
+                latitude            = d.get("latitude") or None,
+                longitude           = d.get("longitude") or None,
+                countyname          = d.get("county") or None,
+                displayline1        = address_line1,
+                displayline2        = d.get("address_line2") or None,
+                displaycitystatezip = city_state_zip,
+                createdby           = request.user.id,
+                creationdate        = now,
+                lasteditby          = request.user.id,
+                lasteditdate        = now,
+            )
+
+            facility = Facility.objects.create(
+                location        = location,
+                name            = facility_name,
+                activity_status = True,
+                active_date     = now,
+                created_by      = request.user.id,
+                creation_date   = now,
+                last_edit_by    = request.user.id,
+                last_edit_date  = now,
+            )
+
+            pf = ProgramFacility.objects.create(
+                facility              = facility,
+                program_facility_type = pft,
+                program_district      = district,
+                profile               = d.get("profile") or pft.profile_template or "{}",
+                license_number        = d.get("license_number") or None,
+                license_expire_date   = d.get("license_expire_date") or None,
+                facility_phone        = d.get("facility_phone") or None,
+                tracking_id           = d.get("tracking_id") or None,
+                risk_assessment       = d.get("risk_assessment") or None,
+                start_date            = d.get("start_date") or None,
+                activity_flag         = d.get("activity_flag") or "A",
+                comments              = d.get("comments") or None,
+            )
+
+        return Response({
+            "facility_id":         facility.facility_id,
+            "program_facility_id": pf.program_facility_id,
+            "facility_name":       facility.name,
+            "address":             f"{address_line1}, {city_state_zip}",
+        }, status=201)

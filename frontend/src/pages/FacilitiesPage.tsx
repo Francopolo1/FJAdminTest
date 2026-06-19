@@ -83,6 +83,12 @@ export function FacilitiesPage() {
     <AppLayout title="Facilities">
       {error && <div className="alert alert-error">{error}</div>}
 
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "var(--space-3)" }}>
+        <button className="btn btn-primary" onClick={() => navigate("/facilities/new")}>
+          + New Facility
+        </button>
+      </div>
+
       <div className="card">
         <form className="form-row" onSubmit={handleSearchSubmit}>
           <div>

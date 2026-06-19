@@ -495,3 +495,66 @@ export interface FinancialsSummary {
   active_foapal_strings: number;
   total_splits: number;
 }
+
+// ── Facility creation ───────────────────────────────────────────────────
+
+export interface AddressValidationResult {
+  valid: boolean;
+  error?: string;
+  latitude?: number;
+  longitude?: number;
+  display_address?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  county?: string;
+}
+
+export interface ProgramFacilityTypeOption {
+  program_facility_type_id: string;
+  program_id: string;
+  program_code: string;
+  program_title: string;
+  facility_type_id: string;
+  facility_type_code: string;
+  facility_type_description: string | null;
+  description: string | null;
+  profile_template: string;
+}
+
+export interface ProgramDistrictOption {
+  program_district_id: string;
+  program_id: string;
+  program_code: string;
+  district: number;
+  description: string | null;
+}
+
+export interface FacilityCreatePayload {
+  facility_name: string;
+  address_line1: string;
+  address_line2?: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  latitude?: number;
+  longitude?: number;
+  county?: string;
+  program_facility_type_id: string;
+  program_district_id: string;
+  license_number?: string;
+  license_expire_date?: string;
+  facility_phone?: string;
+  tracking_id?: string;
+  risk_assessment?: string;
+  start_date?: string;
+  activity_flag?: string;
+  comments?: string;
+}
+
+export interface FacilityCreateResult {
+  facility_id: string;
+  program_facility_id: string;
+  facility_name: string;
+  address: string;
+}
