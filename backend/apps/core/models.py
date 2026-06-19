@@ -243,8 +243,8 @@ class Facility(models.Model):
     class Meta:
         managed = False
         db_table = 'facilities'
+        verbose_name_plural = "facilities"
     def __str__(self):        return f"{self.name} ({self.location})"
-    verbose_name_plural = "Facilities"
 
 class ProgramDistricts(models.Model):
     program_district_id = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
@@ -279,8 +279,8 @@ class ProgramFacility(models.Model):
     class Meta:
         managed = False
         db_table = 'program_facilities'
+        verbose_name_plural = "program facilities"
     def __str__(self):        return f"{self.facility} in {self.program_facility_type} ({self.program_district})"
-    verbose_name_plural = "Program Facilities"
 
 
 class UserProgram(models.Model):

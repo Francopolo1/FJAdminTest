@@ -171,7 +171,6 @@ class FacilityAdmin(admin.ModelAdmin):
     search_fields = ["name"]
     autocomplete_fields = ["location"]
 
-
 @admin.register(ProgramDistricts)
 class ProgramDistrictsAdmin(admin.ModelAdmin):
     list_display  = ["program", "district", "description"]
@@ -200,7 +199,6 @@ class ProgramFacilityAdmin(admin.ModelAdmin):
         )}),
         ("Contact / Notes", {"fields": ("facility_phone", "comments")}),
     )
-
 
 # ── User program assignments ────────────────────────────────────────────────
 
