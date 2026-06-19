@@ -10,10 +10,11 @@ Pipeline:
   close_case()          Validates balance is zero, sets case status=Closed
 """
 
+from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
 
-from django.db import transaction
+from django.db import models, transaction
 from django.utils import timezone
 
 from .models import (
@@ -394,3 +395,139 @@ def apply_waiver(
         _sync_case_status(invoice.case)
 
     return waiver
+
+
+# ── run_compliance_check ──────────────────────────────────────────────────────
+
+@transaction.atomic
+def run_compliance_check(instance, actor=None) -> list:
+    """
+    Automated compliance check triggered when a workflow instance enters a
+    ComplianceCheck step.
+
+    For every ComplianceViolation linked to this instance's checklist responses:
+      1. Group violations by checklist_item_compliance_rule (one rule per group).
+      2. Use the latest violation_date in the group as the reference date.
+      3. Read compliance_window (days) from the rule's active FineTier schedule.
+      4. Count *all* violations for that rule at this facility within
+         [violation_date − compliance_window, violation_date] to get offense_number.
+      5. Look up the FineTier whose offense_number matches (clamped to the
+         highest tier if the count exceeds the schedule's maximum).
+      6. Create a FineAssessment (with checklist item, rule, and violation
+         dates in the notes field) under a FineCase keyed to instance.reference_no.
+
+    Returns a list of created FineAssessment objects (empty if no violations).
+    """
+    from apps.compliance.models import ComplianceViolation, FineTier, FineSchedule
+
+    violations = list(
+        ComplianceViolation.objects.filter(
+            checklist_response__run__instance=instance,
+        ).select_related(
+            "checklist_item_compliance_rule__checklist_item",
+            "checklist_item_compliance_rule__compliance_rule",
+            "violation_severity_level",
+        ).order_by("violation_date")
+    )
+
+    if not violations:
+        return []
+
+    # Group by checklist_item_compliance_rule_id
+    groups = defaultdict(list)
+    for v in violations:
+        groups[v.checklist_item_compliance_rule_id].append(v)
+
+    case = _get_or_create_fine_case(instance, actor)
+    assessments = []
+
+    for rule_link_id, group_violations in groups.items():
+        rule_link       = group_violations[0].checklist_item_compliance_rule
+        compliance_rule = rule_link.compliance_rule
+        checklist_item  = rule_link.checklist_item
+        severity        = group_violations[0].violation_severity_level
+
+        # Use the latest violation date in this group as the reference date
+        current_date = max(v.violation_date for v in group_violations)
+
+        # Find the active fine schedule for this compliance rule
+        active_schedule = (
+            FineSchedule.objects
+            .filter(
+                compliance_rule=compliance_rule,
+                effective_date__lte=current_date,
+            )
+            .filter(
+                models.Q(expiration_date__isnull=True) |
+                models.Q(expiration_date__gte=current_date)
+            )
+            .order_by("-effective_date")
+            .first()
+        )
+        if not active_schedule:
+            continue
+
+        # Retrieve all tiers for this schedule + severity, sorted by offense_number
+        tiers = list(
+            FineTier.objects.filter(
+                fine_schedule=active_schedule,
+                violation_severity_level=severity,
+            ).order_by("offense_number")
+        )
+        if not tiers:
+            continue
+
+        # Derive compliance_window from the first tier (tier 1 defines the window)
+        compliance_window = tiers[0].compliance_window or 365
+        lookback_date     = current_date - timedelta(days=compliance_window)
+
+        # Count all violations for this rule+item at this facility in the window
+        offense_count = ComplianceViolation.objects.filter(
+            checklist_item_compliance_rule_id=rule_link_id,
+            checklist_response__run__instance__program_facility=instance.program_facility,
+            violation_date__range=(lookback_date, current_date),
+        ).count()
+
+        # Match offense_count to a tier; clamp to the highest tier if exceeded
+        tier = next(
+            (t for t in tiers if t.offense_number == offense_count),
+            tiers[-1],
+        )
+
+        # Build notes: checklist item, rule, violation date(s)
+        violation_dates = sorted({v.violation_date.isoformat() for v in group_violations})
+        item_text  = checklist_item.item_text if checklist_item else "N/A"
+        rule_label = f"{compliance_rule.code} – {compliance_rule.name}" if compliance_rule else "N/A"
+        notes = (
+            f"Checklist Item: {item_text}\n"
+            f"Compliance Rule: {rule_label}\n"
+            f"Violation Date(s): {', '.join(violation_dates)}\n"
+            f"Offense #{offense_count} within {compliance_window}-day window "
+            f"({lookback_date} to {current_date})"
+        )
+
+        assessment = assess_fine(
+            case=case,
+            violation=group_violations[-1],   # most recent violation as the FK
+            assessed_amount=tier.fine_amount,
+            fine_tier=tier,
+            notes=notes,
+            assessed_by=actor,
+        )
+        assessments.append(assessment)
+
+    return assessments
+
+
+def _get_or_create_fine_case(instance, actor=None) -> FineCase:
+    """Get or create a FineCase for a workflow instance, keyed by reference_no."""
+    case, _ = FineCase.objects.get_or_create(
+        case_number=instance.reference_no,
+        defaults={
+            "program_facility": instance.program_facility,
+            "status": "Open",
+            "opened_date": timezone.localdate(),
+            "created_by": actor,
+        },
+    )
+    return case

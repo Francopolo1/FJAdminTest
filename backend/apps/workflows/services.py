@@ -170,6 +170,11 @@ def advance_instance(instance, actor, trigger_event, comments=None):
             _create_checklist_runs(instance, next_step)
             _create_step_tasks(instance, next_step, assigned_by=actor)
 
+            # Automated compliance check: assess fines for any violations found
+            if next_step.step_type == "ComplianceCheck":
+                from apps.enforcement.services import run_compliance_check
+                run_compliance_check(instance, actor=actor)
+
         WorkflowAuditLog.objects.create(
             instance=instance,
             actor=actor,
