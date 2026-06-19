@@ -8,6 +8,8 @@ from .models import (
     PaymentPlanInstallment,
     FinePayment,
     PaymentReceipt,
+    FineAppeal,
+    FineWaiver,
 )
 
 
@@ -78,3 +80,18 @@ class FinePaymentAdmin(admin.ModelAdmin):
 class PaymentReceiptAdmin(admin.ModelAdmin):
     list_display   = ["receipt_number", "payment", "issued_at", "issued_by"]
     readonly_fields = ["receipt_id", "receipt_number", "issued_at"]
+
+
+@admin.register(FineAppeal)
+class FineAppealAdmin(admin.ModelAdmin):
+    list_display    = ["appeal_id", "assessment", "appeal_date", "status", "hearing_date", "decision_date", "decided_by"]
+    list_filter     = ["status"]
+    search_fields   = ["assessment__case__case_number"]
+    readonly_fields = ["appeal_id", "created_at", "updated_at"]
+
+
+@admin.register(FineWaiver)
+class FineWaiverAdmin(admin.ModelAdmin):
+    list_display    = ["waiver_id", "assessment", "invoice", "waived_amount", "authorization_date", "authorized_by"]
+    search_fields   = ["assessment__case__case_number", "invoice__invoice_number"]
+    readonly_fields = ["waiver_id", "created_at"]

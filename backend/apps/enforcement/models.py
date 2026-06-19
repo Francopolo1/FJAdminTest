@@ -353,3 +353,110 @@ class PaymentReceipt(models.Model):
 
     def __str__(self):
         return f"Receipt {self.receipt_number}"
+
+
+# ── FineAppeal ────────────────────────────────────────────────────────────────
+
+class FineAppeal(models.Model):
+    STATUS_CHOICES = [
+        ("Pending",    "Pending"),
+        ("UnderReview","Under Review"),
+        ("Upheld",     "Upheld"),        # original fine stands
+        ("Reduced",    "Reduced"),       # fine reduced to adjusted_amount
+        ("Dismissed",  "Dismissed"),     # fine cancelled
+        ("Withdrawn",  "Withdrawn"),     # appellant withdrew the appeal
+    ]
+
+    appeal_id       = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    assessment      = models.ForeignKey(
+        FineAssessment,
+        on_delete=models.PROTECT,
+        related_name="appeals",
+    )
+    filed_by        = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text="Staff member who recorded/filed the appeal.",
+    )
+    appeal_date     = models.DateField(default=timezone.localdate)
+    grounds         = models.TextField(help_text="Grounds and reasoning provided by the appellant.")
+    status          = models.CharField(max_length=20, choices=STATUS_CHOICES, default="Pending")
+    hearing_date    = models.DateField(null=True, blank=True)
+    decision_notes  = models.TextField(null=True, blank=True)
+    decision_date   = models.DateField(null=True, blank=True)
+    decided_by      = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text="Staff member who recorded the appeal decision.",
+    )
+    adjusted_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
+        help_text="New assessed amount if the appeal is Reduced. Leave blank for Upheld/Dismissed.",
+    )
+    created_at      = models.DateTimeField(auto_now_add=True)
+    updated_at      = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "enforcement_fine_appeals"
+        ordering = ["-appeal_date", "-created_at"]
+
+    def __str__(self):
+        return f"Appeal {self.appeal_id} — {self.assessment} ({self.status})"
+
+
+# ── FineWaiver ────────────────────────────────────────────────────────────────
+
+class FineWaiver(models.Model):
+    """
+    Audit record for a waiver applied to a FineAssessment or FineInvoice.
+    Exactly one of assessment / invoice must be set.
+    """
+    waiver_id         = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    assessment        = models.ForeignKey(
+        FineAssessment,
+        null=True, blank=True,
+        on_delete=models.PROTECT,
+        related_name="waivers",
+        help_text="Set when waiving a specific assessment line.",
+    )
+    invoice           = models.ForeignKey(
+        FineInvoice,
+        null=True, blank=True,
+        on_delete=models.PROTECT,
+        related_name="waivers",
+        help_text="Set when waiving at the invoice level.",
+    )
+    waived_amount     = models.DecimalField(max_digits=12, decimal_places=2)
+    reason            = models.TextField()
+    authorized_by     = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    authorization_date = models.DateField(default=timezone.localdate)
+    notes             = models.TextField(null=True, blank=True)
+    created_at        = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "enforcement_fine_waivers"
+        ordering = ["-authorization_date", "-created_at"]
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if not self.assessment_id and not self.invoice_id:
+            raise ValidationError("A waiver must be linked to either an assessment or an invoice.")
+        if self.assessment_id and self.invoice_id:
+            raise ValidationError("A waiver cannot be linked to both an assessment and an invoice.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        target = f"assessment {self.assessment_id}" if self.assessment_id else f"invoice {self.invoice_id}"
+        return f"Waiver ${self.waived_amount} on {target}"

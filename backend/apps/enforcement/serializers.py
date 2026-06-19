@@ -10,6 +10,8 @@ from .models import (
     PaymentPlanInstallment,
     FinePayment,
     PaymentReceipt,
+    FineAppeal,
+    FineWaiver,
 )
 
 
@@ -190,3 +192,52 @@ class FineCaseDetailSerializer(FineCaseListSerializer):
 
     class Meta(FineCaseListSerializer.Meta):
         fields = FineCaseListSerializer.Meta.fields + ["assessments", "invoices"]
+
+
+# ── FineAppeal ────────────────────────────────────────────────────────────────
+
+class FineAppealSerializer(serializers.ModelSerializer):
+    filed_by_name   = serializers.CharField(source="filed_by.get_full_name",   read_only=True, default=None)
+    decided_by_name = serializers.CharField(source="decided_by.get_full_name", read_only=True, default=None)
+
+    class Meta:
+        model  = FineAppeal
+        fields = [
+            "appeal_id", "assessment",
+            "filed_by", "filed_by_name", "appeal_date", "grounds",
+            "status", "hearing_date",
+            "decision_notes", "decision_date",
+            "decided_by", "decided_by_name", "adjusted_amount",
+            "created_at", "updated_at",
+        ]
+        read_only_fields = ["appeal_id", "filed_by_name", "decided_by_name", "created_at", "updated_at"]
+
+
+class AppealDecisionInputSerializer(serializers.Serializer):
+    status          = serializers.ChoiceField(choices=FineAppeal.STATUS_CHOICES)
+    decision_notes  = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    decision_date   = serializers.DateField(required=False, allow_null=True)
+    adjusted_amount = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+
+
+# ── FineWaiver ────────────────────────────────────────────────────────────────
+
+class FineWaiverSerializer(serializers.ModelSerializer):
+    authorized_by_name = serializers.CharField(source="authorized_by.get_full_name", read_only=True, default=None)
+
+    class Meta:
+        model  = FineWaiver
+        fields = [
+            "waiver_id", "assessment", "invoice",
+            "waived_amount", "reason",
+            "authorized_by", "authorized_by_name", "authorization_date",
+            "notes", "created_at",
+        ]
+        read_only_fields = ["waiver_id", "authorized_by_name", "created_at"]
+
+    def validate(self, data):
+        if not data.get("assessment") and not data.get("invoice"):
+            raise serializers.ValidationError("Provide either assessment or invoice.")
+        if data.get("assessment") and data.get("invoice"):
+            raise serializers.ValidationError("Provide only one of assessment or invoice, not both.")
+        return data

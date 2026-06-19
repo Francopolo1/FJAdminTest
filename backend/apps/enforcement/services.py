@@ -24,6 +24,8 @@ from .models import (
     PaymentPlanInstallment,
     FinePayment,
     PaymentReceipt,
+    FineAppeal,
+    FineWaiver,
 )
 
 
@@ -253,3 +255,142 @@ def close_case(
         case.notes = f"{case.notes}\n\n{notes}".strip() if case.notes else notes
     case.save(update_fields=["status", "closed_date", "notes", "updated_at"])
     return case
+
+
+# ── file_appeal ───────────────────────────────────────────────────────────────
+
+@transaction.atomic
+def file_appeal(
+    assessment: FineAssessment,
+    grounds: str,
+    appeal_date: date | None = None,
+    hearing_date: date | None = None,
+    filed_by=None,
+) -> FineAppeal:
+    """
+    File a new appeal against a FineAssessment.
+    Sets assessment status to Appealed and case status to Appealed.
+    """
+    appeal = FineAppeal.objects.create(
+        assessment=assessment,
+        grounds=grounds,
+        appeal_date=appeal_date or date.today(),
+        hearing_date=hearing_date,
+        filed_by=filed_by,
+        status="Pending",
+    )
+    assessment.status = "Appealed"
+    assessment.save(update_fields=["status", "updated_at"])
+    assessment.case.status = "Appealed"
+    assessment.case.save(update_fields=["status", "updated_at"])
+    return appeal
+
+
+# ── decide_appeal ─────────────────────────────────────────────────────────────
+
+@transaction.atomic
+def decide_appeal(
+    appeal: FineAppeal,
+    status: str,
+    decided_by=None,
+    decision_notes: str | None = None,
+    decision_date: date | None = None,
+    adjusted_amount: Decimal | None = None,
+) -> FineAppeal:
+    """
+    Record the outcome of an appeal.
+
+    - Upheld:    assessment stays Issued, case re-opens.
+    - Reduced:   assessment.assessed_amount set to adjusted_amount, case re-opens.
+    - Dismissed: assessment set to Cancelled, case re-evaluates status.
+    - Withdrawn: assessment reverts to Issued, case re-opens.
+    """
+    if status not in ("Upheld", "Reduced", "Dismissed", "Withdrawn"):
+        raise ValueError(f"Invalid terminal appeal status: {status}")
+    if status == "Reduced" and adjusted_amount is None:
+        raise ValueError("adjusted_amount is required when status is Reduced.")
+
+    appeal.status         = status
+    appeal.decided_by     = decided_by
+    appeal.decision_notes = decision_notes
+    appeal.decision_date  = decision_date or date.today()
+    appeal.adjusted_amount = adjusted_amount
+    appeal.save(update_fields=[
+        "status", "decided_by", "decision_notes", "decision_date",
+        "adjusted_amount", "updated_at",
+    ])
+
+    assessment = FineAssessment.objects.select_for_update().get(pk=appeal.assessment_id)
+
+    if status == "Upheld":
+        assessment.status = "Issued"
+        assessment.save(update_fields=["status", "updated_at"])
+    elif status == "Reduced":
+        assessment.assessed_amount = adjusted_amount
+        assessment.status = "Issued"
+        assessment.save(update_fields=["assessed_amount", "status", "updated_at"])
+    elif status == "Dismissed":
+        assessment.status = "Cancelled"
+        assessment.save(update_fields=["status", "updated_at"])
+    elif status == "Withdrawn":
+        assessment.status = "Issued"
+        assessment.save(update_fields=["status", "updated_at"])
+
+    _sync_case_status_after_appeal(assessment.case)
+    return appeal
+
+
+def _sync_case_status_after_appeal(case: FineCase) -> None:
+    """Re-evaluate case status after an appeal is decided."""
+    if case.assessments.filter(status="Appealed").exists():
+        return  # other pending appeals remain
+    # Fall back to standard sync
+    _sync_case_status(case)
+
+
+# ── apply_waiver ──────────────────────────────────────────────────────────────
+
+@transaction.atomic
+def apply_waiver(
+    waived_amount: Decimal,
+    reason: str,
+    assessment: FineAssessment | None = None,
+    invoice: FineInvoice | None = None,
+    authorized_by=None,
+    authorization_date: date | None = None,
+    notes: str | None = None,
+) -> FineWaiver:
+    """
+    Record a waiver and apply it to the assessment or invoice waived_amount field.
+    Exactly one of assessment / invoice must be provided.
+    """
+    if not assessment and not invoice:
+        raise ValueError("Provide either assessment or invoice.")
+    if assessment and invoice:
+        raise ValueError("Provide only one of assessment or invoice, not both.")
+
+    waiver = FineWaiver.objects.create(
+        assessment=assessment,
+        invoice=invoice,
+        waived_amount=waived_amount,
+        reason=reason,
+        authorized_by=authorized_by,
+        authorization_date=authorization_date or date.today(),
+        notes=notes,
+    )
+
+    if assessment:
+        assessment = FineAssessment.objects.select_for_update().get(pk=assessment.pk)
+        assessment.waived_amount = assessment.waived_amount + waived_amount
+        assessment.status = "Waived" if assessment.net_amount <= Decimal("0") else assessment.status
+        assessment.save(update_fields=["waived_amount", "status", "updated_at"])
+
+    if invoice:
+        invoice = FineInvoice.objects.select_for_update().get(pk=invoice.pk)
+        invoice.waived_amount = invoice.waived_amount + waived_amount
+        if invoice.balance_due <= Decimal("0"):
+            invoice.status = "Waived"
+        invoice.save(update_fields=["waived_amount", "status", "updated_at"])
+        _sync_case_status(invoice.case)
+
+    return waiver
