@@ -288,6 +288,22 @@ class ProgramFacility(models.Model):
     def __str__(self):        return f"{self.facility} in {self.program_facility_type} ({self.program_district})"
 
 
+class ActivityFlag(models.Model):
+    """Lookup table for program_facilities.activity_flag (A/I/C)."""
+    code        = models.CharField(max_length=1, primary_key=True)
+    label       = models.CharField(max_length=50)
+    description = models.TextField(blank=True, null=True)
+
+    class Meta:
+        db_table            = "activity_flags"
+        ordering            = ["code"]
+        verbose_name        = "activity flag"
+        verbose_name_plural = "activity flags"
+
+    def __str__(self):
+        return f"{self.code} — {self.label}"
+
+
 class RiskAssessmentLevel(models.Model):
     """Visit-frequency lookup keyed by (code, program_facility_type).
 

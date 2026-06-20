@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import (
     AuthUser, AuditLog, UserProfile, UserRole,
-    FacilityType, Specialtracking, ProgramFacilityType, ProgramFacilityTypeActivity,
+    ActivityFlag, FacilityType, Specialtracking, ProgramFacilityType, ProgramFacilityTypeActivity,
     FacilityLocation, Facility, ProgramDistricts, ProgramFacility,
     RiskAssessmentLevel, UserProgram, UserProgramDistrict,
 )
@@ -67,6 +67,12 @@ class AuthUserAdmin(UserAdmin):
         return getattr(getattr(obj, "profile", None), "get_role_display", lambda: "—")()
     role.short_description = "Role"
     role.admin_order_field = "profile__role"
+
+
+@admin.register(ActivityFlag)
+class ActivityFlagAdmin(admin.ModelAdmin):
+    list_display = ["code", "label", "description"]
+    ordering     = ["code"]
 
 
 @admin.register(UserRole)

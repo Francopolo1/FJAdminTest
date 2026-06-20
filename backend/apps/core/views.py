@@ -57,6 +57,18 @@ def _assigned_program_district_ids(user):
     )
 
 
+_ACTIVITY_FLAG_LABELS: dict[str, str] = {}
+
+
+def _activity_flag_label(code: str | None) -> str | None:
+    """Resolve activity flag code to label, lazy-loading from DB on first call."""
+    global _ACTIVITY_FLAG_LABELS
+    if not _ACTIVITY_FLAG_LABELS:
+        from .models import ActivityFlag
+        _ACTIVITY_FLAG_LABELS = dict(ActivityFlag.objects.values_list("code", "label"))
+    return _ACTIVITY_FLAG_LABELS.get(code) if code else None
+
+
 def _risk_fields(pf):
     rl = pf.risk_assessment_level
     return {
@@ -115,6 +127,7 @@ class InspectorLandingAPIView(APIView):
                 "license_number":      pf.license_number,
                 **_risk_fields(pf),
                 "activity_flag":       pf.activity_flag,
+                "activity_flag_label": _activity_flag_label(pf.activity_flag),
                 "last_visit_date":     pf.last_visit_date,
                 "next_visit_date":     pf.next_visit_date,
             }
@@ -266,6 +279,7 @@ class InspectorFacilityDetailAPIView(APIView):
                 "license_number":     pf.license_number,
                 **_risk_fields(pf),
                 "activity_flag":      pf.activity_flag,
+                "activity_flag_label": _activity_flag_label(pf.activity_flag),
                 "last_visit_date":    pf.last_visit_date,
                 "next_visit_date":    pf.next_visit_date,
                 "instances":          WorkflowInstanceListSerializer(
@@ -437,6 +451,7 @@ class FacilityListAPIView(APIView):
                                         if pf.facility and pf.facility.location else None,
                 "license_number":      pf.license_number,
                 "activity_flag":       pf.activity_flag,
+                "activity_flag_label": _activity_flag_label(pf.activity_flag),
             }
             for pf in qs
         ]
@@ -497,9 +512,10 @@ class FacilityDetailAPIView(APIView):
                 "profile":         pf.profile,
                 "license_number":  pf.license_number,
                 **_risk_fields(pf),
-                "activity_flag":   pf.activity_flag,
-                "last_visit_date": pf.last_visit_date,
-                "next_visit_date": pf.next_visit_date,
+                "activity_flag":       pf.activity_flag,
+                "activity_flag_label": _activity_flag_label(pf.activity_flag),
+                "last_visit_date":     pf.last_visit_date,
+                "next_visit_date":     pf.next_visit_date,
                 "instances":       WorkflowInstanceListSerializer(
                     pf.instances.all().order_by("-started_at"), many=True
                 ).data,
@@ -749,6 +765,19 @@ def _next_tracking_id(pft) -> str:
             continue
 
     return f"{prefix}{max_seq + 1:04d}"
+
+
+class ActivityFlagListAPIView(APIView):
+    """List all ActivityFlag codes (global lookup — no filter needed)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .models import ActivityFlag
+        return Response([
+            {"code": f.code, "label": f.label, "description": f.description}
+            for f in ActivityFlag.objects.all()
+        ])
 
 
 class RiskAssessmentLevelListAPIView(APIView):

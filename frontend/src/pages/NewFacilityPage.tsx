@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AppLayout } from "../components/layout/AppLayout";
 import {
   createFacility,
+  fetchActivityFlags,
   fetchFacilityFilterOptions,
   fetchNextTrackingId,
   fetchProgramDistricts,
@@ -10,6 +11,7 @@ import {
   fetchRiskAssessmentLevels,
 } from "../lib/coreApi";
 import type {
+  ActivityFlagOption,
   AddressValidationResult,
   FacilityFilterOptions,
   ProgramDistrictOption,
@@ -89,6 +91,10 @@ export function NewFacilityPage() {
     program_district_id: "",
   });
   const [s2Errors, setS2Errors] = useState<Partial<Record<keyof Step2, string>>>({});
+
+  // ── Activity flags (global lookup, loaded once) ──────────────────────────────
+  const [activityFlags, setActivityFlags] = useState<ActivityFlagOption[]>([]);
+  useEffect(() => { fetchActivityFlags().then(setActivityFlags).catch(() => undefined); }, []);
 
   // ── Risk assessment levels (loaded when PFT is chosen) ──────────────────────
   const [riskLevels, setRiskLevels] = useState<RiskAssessmentLevelOption[]>([]);
@@ -642,8 +648,16 @@ export function NewFacilityPage() {
                     value={s3.activity_flag}
                     onChange={updateS3("activity_flag")}
                   >
-                    <option value="A">Active</option>
-                    <option value="I">Inactive</option>
+                    {activityFlags.length > 0
+                      ? activityFlags.map((f) => (
+                          <option key={f.code} value={f.code}>{f.label}</option>
+                        ))
+                      : <>
+                          <option value="A">Active</option>
+                          <option value="I">Inactive</option>
+                          <option value="C">Closed</option>
+                        </>
+                    }
                   </select>
                 </div>
               </div>

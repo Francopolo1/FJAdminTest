@@ -188,6 +188,7 @@ class InspectorProgramFacilitySerializer(serializers.Serializer):
     risk_assessment_label   = serializers.CharField(allow_null=True)
     visit_frequency_days    = serializers.IntegerField(allow_null=True)
     activity_flag           = serializers.CharField(allow_null=True)
+    activity_flag_label     = serializers.CharField(allow_null=True)
     last_visit_date         = serializers.DateTimeField(allow_null=True)
     next_visit_date         = serializers.DateTimeField(allow_null=True)
 
@@ -267,6 +268,7 @@ class FacilityListItemSerializer(serializers.Serializer):
     state               = serializers.CharField(allow_null=True)
     license_number      = serializers.CharField(allow_null=True)
     activity_flag       = serializers.CharField(allow_null=True)
+    activity_flag_label = serializers.CharField(allow_null=True)
 
 
 class FacilityProgramOptionSerializer(serializers.Serializer):

@@ -49,8 +49,10 @@ export interface InspectorProgramFacility {
   risk_assessment_label: string | null;
   visit_frequency_days: number | null;
   activity_flag: string | null;
+  activity_flag_label: string | null;
   last_visit_date: string | null;
   next_visit_date: string | null;
+
 }
 
 export interface InspectorLanding {
@@ -112,6 +114,7 @@ export interface InspectorFacilityAssignment {
   risk_assessment_label: string | null;
   visit_frequency_days: number | null;
   activity_flag: string | null;
+  activity_flag_label: string | null;
   last_visit_date: string | null;
   next_visit_date: string | null;
   instances: WorkflowInstanceSummary[];
@@ -151,6 +154,7 @@ export interface FacilityListItem {
   state: string | null;
   license_number: string | null;
   activity_flag: string | null;
+  activity_flag_label: string | null;
 }
 
 export interface FacilityProgramOption {
@@ -182,6 +186,7 @@ export interface FacilityAssignmentSummary {
   risk_assessment_label: string | null;
   visit_frequency_days: number | null;
   activity_flag: string | null;
+  activity_flag_label: string | null;
   last_visit_date: string | null;
   next_visit_date: string | null;
   instances: WorkflowInstanceSummary[];
@@ -566,6 +571,12 @@ export interface FacilityCreateResult {
   program_facility_id: string;
   facility_name: string;
   address: string;
+}
+
+export interface ActivityFlagOption {
+  code: string;
+  label: string;
+  description: string | null;
 }
 
 export interface RiskAssessmentLevelOption {
