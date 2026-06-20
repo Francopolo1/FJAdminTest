@@ -55,7 +55,7 @@ interface Step3 {
   license_expire_date: string;
   facility_phone: string;
   tracking_id: string;
-  risk_assessment: string;
+  risk_assessment_levels_id: number | "";
   start_date: string;
   activity_flag: string;
   comments: string;
@@ -99,7 +99,7 @@ export function NewFacilityPage() {
     license_expire_date: "",
     facility_phone: "",
     tracking_id: "",
-    risk_assessment: "",
+    risk_assessment_levels_id: "",
     start_date: "",
     activity_flag: "A",
     comments: "",
@@ -265,7 +265,7 @@ export function NewFacilityPage() {
         license_expire_date:      s3.license_expire_date || undefined,
         facility_phone:           s3.facility_phone || undefined,
         tracking_id:              s3.tracking_id || undefined,
-        risk_assessment:          s3.risk_assessment || undefined,
+        risk_assessment_levels_id: s3.risk_assessment_levels_id || undefined,
         start_date:               s3.start_date || undefined,
         activity_flag:            s3.activity_flag || undefined,
         comments:                 s3.comments || undefined,
@@ -603,17 +603,22 @@ export function NewFacilityPage() {
 
               <div className="form-row" style={{ gap: "var(--space-3)" }}>
                 <div style={{ flex: 1 }}>
-                  <label className="field-label" htmlFor="risk_assessment">Risk Assessment</label>
+                  <label className="field-label" htmlFor="risk_assessment_levels_id">Risk Assessment</label>
                   <select
-                    id="risk_assessment"
+                    id="risk_assessment_levels_id"
                     className="select"
-                    value={s3.risk_assessment}
-                    onChange={updateS3("risk_assessment")}
+                    value={s3.risk_assessment_levels_id}
+                    onChange={(e) =>
+                      setS3((prev) => ({
+                        ...prev,
+                        risk_assessment_levels_id: e.target.value ? Number(e.target.value) : "",
+                      }))
+                    }
                     disabled={riskLevels.length === 0}
                   >
                     <option value="">— None —</option>
                     {riskLevels.map((r) => (
-                      <option key={r.code} value={r.code}>
+                      <option key={r.id} value={r.id}>
                         {r.label} ({r.visit_frequency_days}d)
                       </option>
                     ))}

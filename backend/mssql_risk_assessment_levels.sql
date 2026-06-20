@@ -27,26 +27,41 @@ ELSE
     PRINT 'risk_assessment_levels already exists — skipped';
 GO
 
--- ── FK: program_facilities.risk_assessment → risk_assessment_levels ───────────
--- Composite FK on (risk_assessment, program_facility_type_id) so each facility's
--- risk code is validated against the levels defined for its specific program type.
--- Added WITH NOCHECK so existing rows (which may predate risk_assessment_levels
--- data) are not validated; new inserts/updates are enforced going forward.
-IF NOT EXISTS (
+-- ── Drop old composite FK if it was added previously ─────────────────────────
+IF EXISTS (
     SELECT 1 FROM sys.foreign_keys
     WHERE name = 'fk_pf_risk_assessment' AND parent_object_id = OBJECT_ID('program_facilities')
 )
 BEGIN
+    ALTER TABLE program_facilities DROP CONSTRAINT fk_pf_risk_assessment;
+    PRINT 'Dropped old composite FK fk_pf_risk_assessment';
+END
+GO
+
+-- ── Drop old risk_assessment VARCHAR column if it exists ──────────────────────
+IF EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID('program_facilities') AND name = 'risk_assessment'
+)
+BEGIN
+    ALTER TABLE program_facilities DROP COLUMN risk_assessment;
+    PRINT 'Dropped old risk_assessment column';
+END
+GO
+
+-- ── Add risk_assessment_levels_id INT FK column ───────────────────────────────
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID('program_facilities') AND name = 'risk_assessment_levels_id'
+)
+BEGIN
     ALTER TABLE program_facilities
-    WITH NOCHECK
-    ADD CONSTRAINT fk_pf_risk_assessment
-        FOREIGN KEY (risk_assessment, program_facility_type_id)
-        REFERENCES risk_assessment_levels (code, program_facility_type_id)
-        ON UPDATE CASCADE
+    ADD risk_assessment_levels_id INT NULL
+        REFERENCES risk_assessment_levels(id)
         ON DELETE SET NULL;
 
-    PRINT 'Added FK fk_pf_risk_assessment on program_facilities';
+    PRINT 'Added risk_assessment_levels_id FK column on program_facilities';
 END
 ELSE
-    PRINT 'fk_pf_risk_assessment already exists — skipped';
+    PRINT 'risk_assessment_levels_id already exists — skipped';
 GO

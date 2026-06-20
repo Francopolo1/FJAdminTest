@@ -44,6 +44,7 @@ export interface InspectorProgramFacility {
   district: number | null;
   facility_type: string | null;
   license_number: string | null;
+  risk_assessment_level_id: number | null;
   risk_assessment: string | null;
   risk_assessment_label: string | null;
   visit_frequency_days: number | null;
@@ -106,6 +107,7 @@ export interface InspectorFacilityAssignment {
   facility_type: string | null;
   profile: string | null;
   license_number: string | null;
+  risk_assessment_level_id: number | null;
   risk_assessment: string | null;
   risk_assessment_label: string | null;
   visit_frequency_days: number | null;
@@ -175,6 +177,7 @@ export interface FacilityAssignmentSummary {
   facility_type: string | null;
   profile: string | null;
   license_number: string | null;
+  risk_assessment_level_id: number | null;
   risk_assessment: string | null;
   risk_assessment_label: string | null;
   visit_frequency_days: number | null;
@@ -552,7 +555,7 @@ export interface FacilityCreatePayload {
   license_expire_date?: string;
   facility_phone?: string;
   tracking_id?: string;
-  risk_assessment?: string;
+  risk_assessment_levels_id?: number;
   start_date?: string;
   activity_flag?: string;
   comments?: string;

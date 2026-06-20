@@ -206,7 +206,7 @@ class ProgramFacilityAdmin(admin.ModelAdmin):
         (None, {"fields": ("facility", "program_facility_type", "program_district", "profile")}),
         ("Licensing", {"fields": (
             "license_number", "license_expire_date", "tracking_id",
-            "risk_assessment", "activity_flag",
+            "risk_assessment_level", "activity_flag",
         )}),
         ("Visits", {"fields": (
             "start_date", "last_visit_date", "next_visit_date",
