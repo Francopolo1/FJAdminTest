@@ -288,6 +288,30 @@ class ProgramFacility(models.Model):
     def __str__(self):        return f"{self.facility} in {self.program_facility_type} ({self.program_district})"
 
 
+class StepTypeRole(models.Model):
+    """Lookup table mapping workflow step types to the role responsible for acting
+    on them.  responsible_role=None means the step is automated — no human task
+    is created and the engine auto-advances using the 'Auto' trigger event.
+    """
+    step_type        = models.CharField(max_length=50, primary_key=True)
+    label            = models.CharField(max_length=100)
+    responsible_role = models.CharField(
+        max_length=30, null=True, blank=True,
+        help_text="UserProfile.role that handles this step. Leave blank for automated steps.",
+    )
+    description      = models.TextField(null=True, blank=True)
+
+    class Meta:
+        db_table            = "workflow_step_type_roles"
+        ordering            = ["step_type"]
+        verbose_name        = "step type role"
+        verbose_name_plural = "step type roles"
+
+    def __str__(self):
+        role = self.responsible_role or "automated"
+        return f"{self.step_type} → {role}"
+
+
 class ActivityFlag(models.Model):
     """Lookup table for program_facilities.activity_flag (A/I/C)."""
     code        = models.CharField(max_length=1, primary_key=True)
