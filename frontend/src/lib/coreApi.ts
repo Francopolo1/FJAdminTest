@@ -11,6 +11,7 @@ import type {
   InspectorProgram,
   ProgramDistrictOption,
   ProgramFacilityTypeOption,
+  RiskAssessmentLevelOption,
   SupervisorLanding,
   WorkflowInstanceSummary,
 } from "../types";
@@ -121,6 +122,13 @@ export async function fetchProgramFacilityTypes(programId?: string): Promise<Pro
 export async function fetchProgramDistricts(programId?: string): Promise<ProgramDistrictOption[]> {
   const { data } = await api.get<ProgramDistrictOption[]>("/api/core/facilities/program-districts/", {
     params: programId ? { program: programId } : {},
+  });
+  return data;
+}
+
+export async function fetchRiskAssessmentLevels(programFacilityTypeId?: string): Promise<RiskAssessmentLevelOption[]> {
+  const { data } = await api.get<RiskAssessmentLevelOption[]>("/api/core/facilities/risk-assessment-levels/", {
+    params: programFacilityTypeId ? { program_facility_type_id: programFacilityTypeId } : {},
   });
   return data;
 }

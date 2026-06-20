@@ -7,12 +7,14 @@ import {
   fetchNextTrackingId,
   fetchProgramDistricts,
   fetchProgramFacilityTypes,
+  fetchRiskAssessmentLevels,
 } from "../lib/coreApi";
 import type {
   AddressValidationResult,
   FacilityFilterOptions,
   ProgramDistrictOption,
   ProgramFacilityTypeOption,
+  RiskAssessmentLevelOption,
 } from "../types";
 
 const US_STATES = [
@@ -88,6 +90,9 @@ export function NewFacilityPage() {
   });
   const [s2Errors, setS2Errors] = useState<Partial<Record<keyof Step2, string>>>({});
 
+  // ── Risk assessment levels (loaded when PFT is chosen) ──────────────────────
+  const [riskLevels, setRiskLevels] = useState<RiskAssessmentLevelOption[]>([]);
+
   // ── Step 3 ──────────────────────────────────────────────────────────────────
   const [s3, setS3] = useState<Step3>({
     license_number: "",
@@ -118,7 +123,13 @@ export function NewFacilityPage() {
     fetchProgramFacilityTypes(s2.program_id).then(setPfts).catch(() => undefined);
     fetchProgramDistricts(s2.program_id).then(setDistricts).catch(() => undefined);
     setS2((prev) => ({ ...prev, program_facility_type_id: "", program_district_id: "" }));
+    setRiskLevels([]);
   }, [s2.program_id]);
+
+  useEffect(() => {
+    if (!s2.program_facility_type_id) { setRiskLevels([]); return; }
+    fetchRiskAssessmentLevels(s2.program_facility_type_id).then(setRiskLevels).catch(() => undefined);
+  }, [s2.program_facility_type_id]);
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
   const updateS1 = (field: keyof Step1) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -598,11 +609,14 @@ export function NewFacilityPage() {
                     className="select"
                     value={s3.risk_assessment}
                     onChange={updateS3("risk_assessment")}
+                    disabled={riskLevels.length === 0}
                   >
                     <option value="">— None —</option>
-                    <option value="LOW">Low</option>
-                    <option value="MED">Medium</option>
-                    <option value="HIGH">High</option>
+                    {riskLevels.map((r) => (
+                      <option key={r.code} value={r.code}>
+                        {r.label} ({r.visit_frequency_days}d)
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div style={{ flex: 1 }}>

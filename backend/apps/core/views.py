@@ -14,7 +14,8 @@ from apps.workflows.serializers import WorkflowInstanceListSerializer
 from apps.workflows.services import generate_reference_no, submit_instance
 from apps.financials.models import Program
 from .models import (
-    AuthUser, AuditLog, FacilityType, ProgramFacility, UserProfile, UserProgram, UserProgramDistrict,
+    AuthUser, AuditLog, FacilityType, ProgramFacility, RiskAssessmentLevel,
+    UserProfile, UserProgram, UserProgramDistrict,
 )
 from .serializers import (
     AuthUserSerializer,
@@ -56,6 +57,27 @@ def _assigned_program_district_ids(user):
     )
 
 
+def _risk_lookup(pft_ids):
+    """Return dict keyed by (code, pft_id) → {label, visit_frequency_days}."""
+    rows = RiskAssessmentLevel.objects.filter(program_facility_type_id__in=pft_ids)
+    return {
+        (r.code, r.program_facility_type_id): {
+            "risk_assessment_label": r.label,
+            "visit_frequency_days":  r.visit_frequency_days,
+        }
+        for r in rows
+    }
+
+
+def _risk_fields(pf, lookup):
+    entry = lookup.get((pf.risk_assessment, pf.program_facility_type_id)) or {}
+    return {
+        "risk_assessment":       pf.risk_assessment,
+        "risk_assessment_label": entry.get("risk_assessment_label"),
+        "visit_frequency_days":  entry.get("visit_frequency_days"),
+    }
+
+
 class InspectorLandingAPIView(APIView):
     """Role-specific landing data for inspectors: their assigned programs,
     program districts, and the program facilities within those districts."""
@@ -86,10 +108,11 @@ class InspectorLandingAPIView(APIView):
         ]
 
         district_ids = _assigned_program_district_ids(user)
-        facilities_qs = (
+        facilities_qs = list(
             ProgramFacility.objects.filter(program_district_id__in=district_ids)
             .select_related("facility", "program_district__program", "program_facility_type__facility_type")
         )
+        risk = _risk_lookup({pf.program_facility_type_id for pf in facilities_qs})
         program_facilities = [
             {
                 "program_facility_id": pf.program_facility_id,
@@ -101,7 +124,7 @@ class InspectorLandingAPIView(APIView):
                 "facility_type":       (pf.program_facility_type.facility_type.description or "").strip() or None
                                         if pf.program_facility_type and pf.program_facility_type.facility_type else None,
                 "license_number":      pf.license_number,
-                "risk_assessment":     pf.risk_assessment,
+                **_risk_fields(pf, risk),
                 "activity_flag":       pf.activity_flag,
                 "last_visit_date":     pf.last_visit_date,
                 "next_visit_date":     pf.next_visit_date,
@@ -227,7 +250,7 @@ class InspectorFacilityDetailAPIView(APIView):
 
         district_ids = _assigned_program_district_ids(request.user)
 
-        assignments_qs = (
+        assignments_qs = list(
             ProgramFacility.objects.filter(facility_id=facility_id, program_district_id__in=district_ids)
             .select_related("facility__location", "program_district__program", "program_facility_type__facility_type")
             .prefetch_related(
@@ -238,9 +261,10 @@ class InspectorFacilityDetailAPIView(APIView):
             )
         )
 
-        if not assignments_qs.exists():
+        if not assignments_qs:
             raise NotFound("Facility not found in your assigned districts.")
 
+        risk = _risk_lookup({pf.program_facility_type_id for pf in assignments_qs})
         facility = assignments_qs[0].facility
         assignments = []
         for pf in assignments_qs:
@@ -252,7 +276,7 @@ class InspectorFacilityDetailAPIView(APIView):
                                   if pf.program_facility_type and pf.program_facility_type.facility_type else None,
                 "profile":            pf.profile,
                 "license_number":     pf.license_number,
-                "risk_assessment":    pf.risk_assessment,
+                **_risk_fields(pf, risk),
                 "activity_flag":      pf.activity_flag,
                 "last_visit_date":    pf.last_visit_date,
                 "next_visit_date":    pf.next_visit_date,
@@ -460,7 +484,7 @@ class FacilityDetailAPIView(APIView):
         except ValueError:
             raise NotFound("Facility not found.")
 
-        assignments_qs = (
+        assignments_qs = list(
             ProgramFacility.objects.filter(facility_id=facility_id)
             .select_related("facility__location", "program_district__program", "program_facility_type__facility_type")
             .prefetch_related(
@@ -471,9 +495,10 @@ class FacilityDetailAPIView(APIView):
             )
         )
 
-        if not assignments_qs.exists():
+        if not assignments_qs:
             raise NotFound("Facility not found.")
 
+        risk = _risk_lookup({pf.program_facility_type_id for pf in assignments_qs})
         facility = assignments_qs[0].facility
         assignments = [
             {
@@ -484,7 +509,7 @@ class FacilityDetailAPIView(APIView):
                                   if pf.program_facility_type and pf.program_facility_type.facility_type else None,
                 "profile":         pf.profile,
                 "license_number":  pf.license_number,
-                "risk_assessment": pf.risk_assessment,
+                **_risk_fields(pf, risk),
                 "activity_flag":   pf.activity_flag,
                 "last_visit_date": pf.last_visit_date,
                 "next_visit_date": pf.next_visit_date,
@@ -737,6 +762,29 @@ def _next_tracking_id(pft) -> str:
             continue
 
     return f"{prefix}{max_seq + 1:04d}"
+
+
+class RiskAssessmentLevelListAPIView(APIView):
+    """List RiskAssessmentLevels for a given ProgramFacilityType."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        pft_id = request.query_params.get("program_facility_type_id")
+        qs = RiskAssessmentLevel.objects.order_by("visit_frequency_days")
+        if pft_id:
+            qs = qs.filter(program_facility_type_id=pft_id)
+        return Response([
+            {
+                "id":                   r.id,
+                "code":                 r.code,
+                "label":                r.label,
+                "visit_frequency_days": r.visit_frequency_days,
+                "description":          r.description,
+                "program_facility_type_id": r.program_facility_type_id,
+            }
+            for r in qs
+        ])
 
 
 class NextTrackingIdAPIView(APIView):
