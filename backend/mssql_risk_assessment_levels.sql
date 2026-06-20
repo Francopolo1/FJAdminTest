@@ -26,3 +26,27 @@ END
 ELSE
     PRINT 'risk_assessment_levels already exists — skipped';
 GO
+
+-- ── FK: program_facilities.risk_assessment → risk_assessment_levels ───────────
+-- Composite FK on (risk_assessment, program_facility_type_id) so each facility's
+-- risk code is validated against the levels defined for its specific program type.
+-- Added WITH NOCHECK so existing rows (which may predate risk_assessment_levels
+-- data) are not validated; new inserts/updates are enforced going forward.
+IF NOT EXISTS (
+    SELECT 1 FROM sys.foreign_keys
+    WHERE name = 'fk_pf_risk_assessment' AND parent_object_id = OBJECT_ID('program_facilities')
+)
+BEGIN
+    ALTER TABLE program_facilities
+    WITH NOCHECK
+    ADD CONSTRAINT fk_pf_risk_assessment
+        FOREIGN KEY (risk_assessment, program_facility_type_id)
+        REFERENCES risk_assessment_levels (code, program_facility_type_id)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL;
+
+    PRINT 'Added FK fk_pf_risk_assessment on program_facilities';
+END
+ELSE
+    PRINT 'fk_pf_risk_assessment already exists — skipped';
+GO
