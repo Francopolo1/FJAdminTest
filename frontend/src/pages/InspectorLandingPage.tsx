@@ -212,7 +212,7 @@ export function InspectorLandingPage() {
                         <td>
                           {facility.risk_assessment ? (
                             <span className={`badge ${RISK_BADGE[facility.risk_assessment] ?? "badge-gray"}`}>
-                              {facility.risk_assessment}
+                              {facility.risk_assessment_label ?? facility.risk_assessment}
                             </span>
                           ) : (
                             "—"

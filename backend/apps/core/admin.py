@@ -5,7 +5,7 @@ from .models import (
     AuthUser, AuditLog, UserProfile, UserRole,
     FacilityType, Specialtracking, ProgramFacilityType, ProgramFacilityTypeActivity,
     FacilityLocation, Facility, ProgramDistricts, ProgramFacility,
-    UserProgram, UserProgramDistrict,
+    RiskAssessmentLevel, UserProgram, UserProgramDistrict,
 )
 from apps.financials.models import Org
 from apps.workflows.models import WorkflowDefinition
@@ -141,13 +141,28 @@ class ProgramFacilityTypeActivityInline(admin.TabularInline):
     show_change_link = True
 
 
+class RiskAssessmentLevelInline(admin.TabularInline):
+    model  = RiskAssessmentLevel
+    extra  = 0
+    fields = ["code", "label", "visit_frequency_days", "description"]
+    ordering = ["visit_frequency_days"]
+
+
 @admin.register(ProgramFacilityType)
 class ProgramFacilityTypeAdmin(admin.ModelAdmin):
     list_display  = ["program", "facility_type", "description"]
     list_filter   = ["program", "facility_type"]
     search_fields = ["description", "program__code", "facility_type__code"]
     autocomplete_fields = ["program", "facility_type"]
-    inlines       = [ProgramFacilityTypeActivityInline]
+    inlines       = [RiskAssessmentLevelInline, ProgramFacilityTypeActivityInline]
+
+
+@admin.register(RiskAssessmentLevel)
+class RiskAssessmentLevelAdmin(admin.ModelAdmin):
+    list_display   = ["code", "label", "program_facility_type", "visit_frequency_days"]
+    list_filter    = ["program_facility_type"]
+    search_fields  = ["code", "label", "program_facility_type__description"]
+    ordering       = ["program_facility_type", "visit_frequency_days"]
 
 
 @admin.register(FacilityLocation)

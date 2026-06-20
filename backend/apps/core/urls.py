@@ -18,6 +18,7 @@ from .views import (
     ProgramFacilityTypeListAPIView,
     ProgramDistrictListAPIView,
     NextTrackingIdAPIView,
+    RiskAssessmentLevelListAPIView,
     FacilityCreateAPIView,
 )
 
@@ -48,6 +49,7 @@ urlpatterns = [
     path("facilities/program-facility-types/", ProgramFacilityTypeListAPIView.as_view(), name="facility-pft-list"),
     path("facilities/program-districts/", ProgramDistrictListAPIView.as_view(), name="facility-district-list"),
     path("facilities/next-tracking-id/", NextTrackingIdAPIView.as_view(), name="facility-next-tracking-id"),
+    path("facilities/risk-assessment-levels/", RiskAssessmentLevelListAPIView.as_view(), name="facility-risk-levels"),
     path("facilities/create/", FacilityCreateAPIView.as_view(), name="facility-create"),
     path(
         "facilities/program-facilities/<str:program_facility_id>/profile/",

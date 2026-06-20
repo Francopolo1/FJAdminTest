@@ -283,6 +283,34 @@ class ProgramFacility(models.Model):
     def __str__(self):        return f"{self.facility} in {self.program_facility_type} ({self.program_district})"
 
 
+class RiskAssessmentLevel(models.Model):
+    """Visit-frequency lookup keyed by (code, program_facility_type).
+
+    `program_facilities.risk_assessment` stores the code; join on both
+    code + program_facility_type_id to resolve label and visit frequency.
+    """
+    code                  = models.CharField(max_length=5)
+    program_facility_type = models.ForeignKey(
+        ProgramFacilityType, models.CASCADE,
+        related_name="risk_assessment_levels",
+    )
+    label                 = models.CharField(max_length=50)
+    visit_frequency_days  = models.PositiveIntegerField(
+        help_text="Target days between visits for this risk level.",
+    )
+    description           = models.TextField(blank=True, null=True)
+
+    class Meta:
+        db_table             = "risk_assessment_levels"
+        unique_together      = [("code", "program_facility_type")]
+        ordering             = ["program_facility_type", "visit_frequency_days"]
+        verbose_name         = "risk assessment level"
+        verbose_name_plural  = "risk assessment levels"
+
+    def __str__(self):
+        return f"{self.code} — {self.label} ({self.visit_frequency_days}d)"
+
+
 class UserProgram(models.Model):
     id         = models.AutoField(primary_key=True)
     user       = models.ForeignKey('core.AuthUser', models.CASCADE, db_column='user_id', related_name='user_programs')
