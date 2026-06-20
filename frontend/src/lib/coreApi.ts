@@ -1,5 +1,6 @@
 import { api } from "./api";
 import type {
+  ActivityFlagOption,
   AddressValidationResult,
   FacilityCreatePayload,
   FacilityCreateResult,
@@ -123,6 +124,11 @@ export async function fetchProgramDistricts(programId?: string): Promise<Program
   const { data } = await api.get<ProgramDistrictOption[]>("/api/core/facilities/program-districts/", {
     params: programId ? { program: programId } : {},
   });
+  return data;
+}
+
+export async function fetchActivityFlags(): Promise<ActivityFlagOption[]> {
+  const { data } = await api.get<ActivityFlagOption[]>("/api/core/facilities/activity-flags/");
   return data;
 }
 

@@ -57,24 +57,25 @@ def _assigned_program_district_ids(user):
     )
 
 
-def _risk_lookup(pft_ids):
-    """Return dict keyed by (code, pft_id) → {label, visit_frequency_days}."""
-    rows = RiskAssessmentLevel.objects.filter(program_facility_type_id__in=pft_ids)
-    return {
-        (r.code, r.program_facility_type_id): {
-            "risk_assessment_label": r.label,
-            "visit_frequency_days":  r.visit_frequency_days,
-        }
-        for r in rows
-    }
+_ACTIVITY_FLAG_LABELS: dict[str, str] = {}
 
 
-def _risk_fields(pf, lookup):
-    entry = lookup.get((pf.risk_assessment, pf.program_facility_type_id)) or {}
+def _activity_flag_label(code: str | None) -> str | None:
+    """Resolve activity flag code to label, lazy-loading from DB on first call."""
+    global _ACTIVITY_FLAG_LABELS
+    if not _ACTIVITY_FLAG_LABELS:
+        from .models import ActivityFlag
+        _ACTIVITY_FLAG_LABELS = dict(ActivityFlag.objects.values_list("code", "label"))
+    return _ACTIVITY_FLAG_LABELS.get(code) if code else None
+
+
+def _risk_fields(pf):
+    rl = pf.risk_assessment_level
     return {
-        "risk_assessment":       pf.risk_assessment,
-        "risk_assessment_label": entry.get("risk_assessment_label"),
-        "visit_frequency_days":  entry.get("visit_frequency_days"),
+        "risk_assessment_level_id": rl.id if rl else None,
+        "risk_assessment":          rl.code if rl else None,
+        "risk_assessment_label":    rl.label if rl else None,
+        "visit_frequency_days":     rl.visit_frequency_days if rl else None,
     }
 
 
@@ -110,9 +111,9 @@ class InspectorLandingAPIView(APIView):
         district_ids = _assigned_program_district_ids(user)
         facilities_qs = list(
             ProgramFacility.objects.filter(program_district_id__in=district_ids)
-            .select_related("facility", "program_district__program", "program_facility_type__facility_type")
+            .select_related("facility", "program_district__program", "program_facility_type__facility_type",
+                            "risk_assessment_level")
         )
-        risk = _risk_lookup({pf.program_facility_type_id for pf in facilities_qs})
         program_facilities = [
             {
                 "program_facility_id": pf.program_facility_id,
@@ -124,8 +125,9 @@ class InspectorLandingAPIView(APIView):
                 "facility_type":       (pf.program_facility_type.facility_type.description or "").strip() or None
                                         if pf.program_facility_type and pf.program_facility_type.facility_type else None,
                 "license_number":      pf.license_number,
-                **_risk_fields(pf, risk),
+                **_risk_fields(pf),
                 "activity_flag":       pf.activity_flag,
+                "activity_flag_label": _activity_flag_label(pf.activity_flag),
                 "last_visit_date":     pf.last_visit_date,
                 "next_visit_date":     pf.next_visit_date,
             }
@@ -252,7 +254,8 @@ class InspectorFacilityDetailAPIView(APIView):
 
         assignments_qs = list(
             ProgramFacility.objects.filter(facility_id=facility_id, program_district_id__in=district_ids)
-            .select_related("facility__location", "program_district__program", "program_facility_type__facility_type")
+            .select_related("facility__location", "program_district__program", "program_facility_type__facility_type",
+                            "risk_assessment_level")
             .prefetch_related(
                 "instances__workflow",
                 "instances__current_step",
@@ -263,8 +266,6 @@ class InspectorFacilityDetailAPIView(APIView):
 
         if not assignments_qs:
             raise NotFound("Facility not found in your assigned districts.")
-
-        risk = _risk_lookup({pf.program_facility_type_id for pf in assignments_qs})
         facility = assignments_qs[0].facility
         assignments = []
         for pf in assignments_qs:
@@ -276,8 +277,9 @@ class InspectorFacilityDetailAPIView(APIView):
                                   if pf.program_facility_type and pf.program_facility_type.facility_type else None,
                 "profile":            pf.profile,
                 "license_number":     pf.license_number,
-                **_risk_fields(pf, risk),
+                **_risk_fields(pf),
                 "activity_flag":      pf.activity_flag,
+                "activity_flag_label": _activity_flag_label(pf.activity_flag),
                 "last_visit_date":    pf.last_visit_date,
                 "next_visit_date":    pf.next_visit_date,
                 "instances":          WorkflowInstanceListSerializer(
@@ -449,6 +451,7 @@ class FacilityListAPIView(APIView):
                                         if pf.facility and pf.facility.location else None,
                 "license_number":      pf.license_number,
                 "activity_flag":       pf.activity_flag,
+                "activity_flag_label": _activity_flag_label(pf.activity_flag),
             }
             for pf in qs
         ]
@@ -486,7 +489,8 @@ class FacilityDetailAPIView(APIView):
 
         assignments_qs = list(
             ProgramFacility.objects.filter(facility_id=facility_id)
-            .select_related("facility__location", "program_district__program", "program_facility_type__facility_type")
+            .select_related("facility__location", "program_district__program", "program_facility_type__facility_type",
+                            "risk_assessment_level")
             .prefetch_related(
                 "instances__workflow",
                 "instances__current_step",
@@ -497,8 +501,6 @@ class FacilityDetailAPIView(APIView):
 
         if not assignments_qs:
             raise NotFound("Facility not found.")
-
-        risk = _risk_lookup({pf.program_facility_type_id for pf in assignments_qs})
         facility = assignments_qs[0].facility
         assignments = [
             {
@@ -509,10 +511,11 @@ class FacilityDetailAPIView(APIView):
                                   if pf.program_facility_type and pf.program_facility_type.facility_type else None,
                 "profile":         pf.profile,
                 "license_number":  pf.license_number,
-                **_risk_fields(pf, risk),
-                "activity_flag":   pf.activity_flag,
-                "last_visit_date": pf.last_visit_date,
-                "next_visit_date": pf.next_visit_date,
+                **_risk_fields(pf),
+                "activity_flag":       pf.activity_flag,
+                "activity_flag_label": _activity_flag_label(pf.activity_flag),
+                "last_visit_date":     pf.last_visit_date,
+                "next_visit_date":     pf.next_visit_date,
                 "instances":       WorkflowInstanceListSerializer(
                     pf.instances.all().order_by("-started_at"), many=True
                 ).data,
@@ -764,6 +767,19 @@ def _next_tracking_id(pft) -> str:
     return f"{prefix}{max_seq + 1:04d}"
 
 
+class ActivityFlagListAPIView(APIView):
+    """List all ActivityFlag codes (global lookup — no filter needed)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .models import ActivityFlag
+        return Response([
+            {"code": f.code, "label": f.label, "description": f.description}
+            for f in ActivityFlag.objects.all()
+        ])
+
+
 class RiskAssessmentLevelListAPIView(APIView):
     """List RiskAssessmentLevels for a given ProgramFacilityType."""
 
@@ -907,7 +923,7 @@ class FacilityCreateAPIView(APIView):
                 license_expire_date   = d.get("license_expire_date") or None,
                 facility_phone        = d.get("facility_phone") or None,
                 tracking_id           = (d.get("tracking_id") or "").strip() or _next_tracking_id(pft),
-                risk_assessment       = d.get("risk_assessment") or None,
+                risk_assessment_level_id = d.get("risk_assessment_levels_id") or None,
                 start_date            = d.get("start_date") or None,
                 activity_flag         = d.get("activity_flag") or "A",
                 comments              = d.get("comments") or None,

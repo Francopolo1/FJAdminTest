@@ -264,7 +264,12 @@ class ProgramFacility(models.Model):
     profile = models.CharField(max_length=4000, db_collation='SQL_Latin1_General_CP1_CI_AS')
     program_district = models.ForeignKey(ProgramDistricts, models.DO_NOTHING)
     tracking_id = models.CharField(max_length=20, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    risk_assessment = models.CharField(max_length=5, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
+    risk_assessment_level = models.ForeignKey(
+        'RiskAssessmentLevel', models.SET_NULL,
+        null=True, blank=True,
+        db_column='risk_assessment_levels_id',
+        related_name='program_facilities',
+    )
     start_date = models.DateTimeField(blank=True, null=True)
     activity_flag = models.CharField(max_length=1, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
     license_number = models.CharField(max_length=15, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
@@ -281,6 +286,22 @@ class ProgramFacility(models.Model):
         db_table = 'program_facilities'
         verbose_name_plural = "program facilities"
     def __str__(self):        return f"{self.facility} in {self.program_facility_type} ({self.program_district})"
+
+
+class ActivityFlag(models.Model):
+    """Lookup table for program_facilities.activity_flag (A/I/C)."""
+    code        = models.CharField(max_length=1, primary_key=True)
+    label       = models.CharField(max_length=50)
+    description = models.TextField(blank=True, null=True)
+
+    class Meta:
+        db_table            = "activity_flags"
+        ordering            = ["code"]
+        verbose_name        = "activity flag"
+        verbose_name_plural = "activity flags"
+
+    def __str__(self):
+        return f"{self.code} — {self.label}"
 
 
 class RiskAssessmentLevel(models.Model):

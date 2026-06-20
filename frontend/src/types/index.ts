@@ -44,12 +44,15 @@ export interface InspectorProgramFacility {
   district: number | null;
   facility_type: string | null;
   license_number: string | null;
+  risk_assessment_level_id: number | null;
   risk_assessment: string | null;
   risk_assessment_label: string | null;
   visit_frequency_days: number | null;
   activity_flag: string | null;
+  activity_flag_label: string | null;
   last_visit_date: string | null;
   next_visit_date: string | null;
+
 }
 
 export interface InspectorLanding {
@@ -106,10 +109,12 @@ export interface InspectorFacilityAssignment {
   facility_type: string | null;
   profile: string | null;
   license_number: string | null;
+  risk_assessment_level_id: number | null;
   risk_assessment: string | null;
   risk_assessment_label: string | null;
   visit_frequency_days: number | null;
   activity_flag: string | null;
+  activity_flag_label: string | null;
   last_visit_date: string | null;
   next_visit_date: string | null;
   instances: WorkflowInstanceSummary[];
@@ -149,6 +154,7 @@ export interface FacilityListItem {
   state: string | null;
   license_number: string | null;
   activity_flag: string | null;
+  activity_flag_label: string | null;
 }
 
 export interface FacilityProgramOption {
@@ -175,10 +181,12 @@ export interface FacilityAssignmentSummary {
   facility_type: string | null;
   profile: string | null;
   license_number: string | null;
+  risk_assessment_level_id: number | null;
   risk_assessment: string | null;
   risk_assessment_label: string | null;
   visit_frequency_days: number | null;
   activity_flag: string | null;
+  activity_flag_label: string | null;
   last_visit_date: string | null;
   next_visit_date: string | null;
   instances: WorkflowInstanceSummary[];
@@ -552,7 +560,7 @@ export interface FacilityCreatePayload {
   license_expire_date?: string;
   facility_phone?: string;
   tracking_id?: string;
-  risk_assessment?: string;
+  risk_assessment_levels_id?: number;
   start_date?: string;
   activity_flag?: string;
   comments?: string;
@@ -563,6 +571,12 @@ export interface FacilityCreateResult {
   program_facility_id: string;
   facility_name: string;
   address: string;
+}
+
+export interface ActivityFlagOption {
+  code: string;
+  label: string;
+  description: string | null;
 }
 
 export interface RiskAssessmentLevelOption {

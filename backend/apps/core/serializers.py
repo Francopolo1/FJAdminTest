@@ -182,11 +182,15 @@ class InspectorProgramFacilitySerializer(serializers.Serializer):
     program_code        = serializers.CharField()
     district            = serializers.IntegerField(allow_null=True)
     facility_type       = serializers.CharField(allow_null=True)
-    license_number      = serializers.CharField(allow_null=True)
-    risk_assessment     = serializers.CharField(allow_null=True)
-    activity_flag       = serializers.CharField(allow_null=True)
-    last_visit_date     = serializers.DateTimeField(allow_null=True)
-    next_visit_date     = serializers.DateTimeField(allow_null=True)
+    license_number          = serializers.CharField(allow_null=True)
+    risk_assessment_level_id = serializers.IntegerField(allow_null=True)
+    risk_assessment         = serializers.CharField(allow_null=True)
+    risk_assessment_label   = serializers.CharField(allow_null=True)
+    visit_frequency_days    = serializers.IntegerField(allow_null=True)
+    activity_flag           = serializers.CharField(allow_null=True)
+    activity_flag_label     = serializers.CharField(allow_null=True)
+    last_visit_date         = serializers.DateTimeField(allow_null=True)
+    next_visit_date         = serializers.DateTimeField(allow_null=True)
 
 
 class InspectorLandingSerializer(serializers.Serializer):
@@ -218,14 +222,17 @@ class InspectorFacilityAssignmentSerializer(serializers.Serializer):
     program_code        = serializers.CharField()
     district            = serializers.IntegerField(allow_null=True)
     facility_type       = serializers.CharField(allow_null=True)
-    profile             = serializers.CharField(allow_null=True)
-    license_number      = serializers.CharField(allow_null=True)
-    risk_assessment     = serializers.CharField(allow_null=True)
-    activity_flag       = serializers.CharField(allow_null=True)
-    last_visit_date     = serializers.DateTimeField(allow_null=True)
-    next_visit_date     = serializers.DateTimeField(allow_null=True)
-    instances           = serializers.ListField(child=serializers.DictField())
-    activities          = serializers.ListField(child=serializers.DictField())
+    profile                  = serializers.CharField(allow_null=True)
+    license_number           = serializers.CharField(allow_null=True)
+    risk_assessment_level_id = serializers.IntegerField(allow_null=True)
+    risk_assessment          = serializers.CharField(allow_null=True)
+    risk_assessment_label    = serializers.CharField(allow_null=True)
+    visit_frequency_days     = serializers.IntegerField(allow_null=True)
+    activity_flag            = serializers.CharField(allow_null=True)
+    last_visit_date          = serializers.DateTimeField(allow_null=True)
+    next_visit_date          = serializers.DateTimeField(allow_null=True)
+    instances                = serializers.ListField(child=serializers.DictField())
+    activities               = serializers.ListField(child=serializers.DictField())
 
 
 class InspectorFacilityLocationSerializer(serializers.Serializer):
@@ -261,6 +268,7 @@ class FacilityListItemSerializer(serializers.Serializer):
     state               = serializers.CharField(allow_null=True)
     license_number      = serializers.CharField(allow_null=True)
     activity_flag       = serializers.CharField(allow_null=True)
+    activity_flag_label = serializers.CharField(allow_null=True)
 
 
 class FacilityProgramOptionSerializer(serializers.Serializer):
@@ -285,14 +293,17 @@ class FacilityAssignmentSummarySerializer(serializers.Serializer):
     program_code        = serializers.CharField()
     district            = serializers.IntegerField(allow_null=True)
     facility_type       = serializers.CharField(allow_null=True)
-    profile             = serializers.CharField(allow_null=True)
-    license_number      = serializers.CharField(allow_null=True)
-    risk_assessment     = serializers.CharField(allow_null=True)
-    activity_flag       = serializers.CharField(allow_null=True)
-    last_visit_date     = serializers.DateTimeField(allow_null=True)
-    next_visit_date     = serializers.DateTimeField(allow_null=True)
-    instances           = serializers.ListField(child=serializers.DictField())
-    activities          = serializers.ListField(child=serializers.DictField())
+    profile                  = serializers.CharField(allow_null=True)
+    license_number           = serializers.CharField(allow_null=True)
+    risk_assessment_level_id = serializers.IntegerField(allow_null=True)
+    risk_assessment          = serializers.CharField(allow_null=True)
+    risk_assessment_label    = serializers.CharField(allow_null=True)
+    visit_frequency_days     = serializers.IntegerField(allow_null=True)
+    activity_flag            = serializers.CharField(allow_null=True)
+    last_visit_date          = serializers.DateTimeField(allow_null=True)
+    next_visit_date          = serializers.DateTimeField(allow_null=True)
+    instances                = serializers.ListField(child=serializers.DictField())
+    activities               = serializers.ListField(child=serializers.DictField())
 
 
 class FacilityDetailSerializer(serializers.Serializer):
