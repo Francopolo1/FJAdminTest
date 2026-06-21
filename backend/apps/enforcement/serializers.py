@@ -212,6 +212,15 @@ class FineAppealSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["appeal_id", "filed_by_name", "decided_by_name", "created_at", "updated_at"]
 
+    def validate_grounds(self, value):
+        if not value or not value.strip():
+            raise serializers.ValidationError("Grounds for appeal cannot be empty.")
+        if len(value) < 10:
+            raise serializers.ValidationError("Grounds for appeal must be at least 10 characters.")
+        if len(value) > 2000:
+            raise serializers.ValidationError("Grounds for appeal cannot exceed 2000 characters.")
+        return value.strip()
+
 
 class AppealDecisionInputSerializer(serializers.Serializer):
     status          = serializers.ChoiceField(choices=FineAppeal.STATUS_CHOICES)

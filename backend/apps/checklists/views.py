@@ -265,6 +265,8 @@ class ChecklistItemViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="upload-example", parser_classes=[MultiPartParser])
     def upload_example(self, request, pk=None):
         """Upload an example image/PDF/video for this item and store it in example_file (R2/storage)."""
+        from django.db import transaction
+
         item = self.get_object()
         upload = request.FILES.get("file")
         if not upload:
@@ -280,10 +282,18 @@ class ChecklistItemViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if item.example_file:
-            item.example_file.delete(save=False)
+        with transaction.atomic():
+            # Delete old file if present (outside of the field assignment)
+            old_file = item.example_file
+            if old_file:
+                old_file.delete(save=False)
 
-        item.example_file.save(upload.name, upload, save=True)
+            # Assign and save atomically
+            item.example_file = upload
+            item.save(update_fields=["example_file"])
+
+        # Refresh from DB to get the serialized file URL
+        item.refresh_from_db()
         return Response(ChecklistItemSerializer(item, context={"request": request}).data)
 
 
