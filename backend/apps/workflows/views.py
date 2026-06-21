@@ -137,6 +137,16 @@ class WorkflowInstanceViewSet(viewsets.ModelViewSet):
             )
         except ValueError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            # Catch unexpected errors (DB errors, missing relationships, etc.)
+            # and return as 400 instead of 500 so frontend can display to user
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.exception(f"Error advancing instance {pk}: {e}")
+            return Response(
+                {"detail": f"Failed to advance request: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         return Response(WorkflowInstanceSerializer(instance).data)
 
     @action(detail=True, methods=["post"], url_path="cancel")
@@ -147,15 +157,24 @@ class WorkflowInstanceViewSet(viewsets.ModelViewSet):
                 {"detail": "Instance is already finalized."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        from_status       = instance.status
-        instance.status   = "Cancelled"
-        instance.completed_at = timezone.now()
-        instance.save()
-        WorkflowAuditLog.objects.create(
-            instance=instance, actor=request.user,
-            action="Cancel", from_status=from_status, to_status="Cancelled",
-            notes=request.data.get("notes"),
-        )
+        try:
+            from_status       = instance.status
+            instance.status   = "Cancelled"
+            instance.completed_at = timezone.now()
+            instance.save()
+            WorkflowAuditLog.objects.create(
+                instance=instance, actor=request.user,
+                action="Cancel", from_status=from_status, to_status="Cancelled",
+                notes=request.data.get("notes"),
+            )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.exception(f"Error cancelling instance {pk}: {e}")
+            return Response(
+                {"detail": f"Failed to cancel request: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         return Response(WorkflowInstanceSerializer(instance).data)
 
     @action(detail=True, methods=["get"], url_path="audit-log")

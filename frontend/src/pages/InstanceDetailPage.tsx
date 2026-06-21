@@ -66,11 +66,22 @@ export function InstanceDetailPage() {
       await advanceInstance(id, triggerEvent);
       await load(id);
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.data?.detail) {
-        setActionError(String(err.response.data.detail));
-      } else {
-        setActionError("Unable to advance this request.");
+      let errorMessage = "Unable to advance this request.";
+      if (axios.isAxiosError(err)) {
+        // Try to get error message from response
+        if (err.response?.data?.detail) {
+          errorMessage = String(err.response.data.detail);
+        } else if (err.response?.data?.message) {
+          errorMessage = String(err.response.data.message);
+        } else if (err.response?.statusText) {
+          errorMessage = err.response.statusText;
+        } else if (err.message) {
+          errorMessage = err.message;
+        }
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
       }
+      setActionError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
