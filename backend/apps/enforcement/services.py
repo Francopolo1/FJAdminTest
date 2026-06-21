@@ -477,9 +477,14 @@ def run_compliance_check(instance, actor=None) -> list:
         if not tiers:
             continue
 
-        # Derive compliance_window from the first tier (tier 1 defines the window)
-        compliance_window = tiers[0].compliance_window or 365
-        lookback_date     = current_date - timedelta(days=compliance_window)
+        # Ensure all tiers for this schedule have the same compliance_window
+        windows = {t.compliance_window or 365 for t in tiers}
+        if len(windows) > 1:
+            # Tiers have inconsistent windows; use the maximum to be conservative
+            compliance_window = max(windows)
+        else:
+            compliance_window = windows.pop()
+        lookback_date = current_date - timedelta(days=compliance_window)
 
         # Count all violations for this rule+item at this facility in the window
         offense_count = ComplianceViolation.objects.filter(
