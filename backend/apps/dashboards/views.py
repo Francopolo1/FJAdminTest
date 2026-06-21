@@ -304,7 +304,7 @@ class TasksDashboardView(View):
         status_dist = [
             {"label": s["status"], "count": s["count"],
              "color": TASK_STATUS_COLORS.get(s["status"], "#9AA1AE")}
-            for s in qs.values("status").annotate(count=Count("instance_id")).order_by("status")
+            for s in qs.values("status").annotate(count=Count("task_id")).order_by("status")
         ]
         priority_dist = [
             {"label": PRIORITY_LABELS.get(p["priority"], f"P{p['priority']}"), "count": p["count"]}
