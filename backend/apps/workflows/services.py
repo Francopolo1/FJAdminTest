@@ -271,8 +271,21 @@ def _create_checklist_runs(instance, step):
                    __import__("django.db.models", fromlist=["Q"]).Q(step__isnull=True)
     ).exclude(pk__in=existing)
 
-    runs = [
-        ChecklistRun(instance=instance, template=t, status="NotStarted")
-        for t in templates
-    ]
+    runs = []
+    for t in templates:
+        # Calculate item counts for this template
+        total_items = t.items.count()
+        total_required = t.items.filter(is_required=True).count()
+
+        runs.append(
+            ChecklistRun(
+                instance=instance,
+                template=t,
+                status="NotStarted",
+                total_items=total_items,
+                total_required=total_required,
+                answered_items=0,
+                answered_required=0,
+            )
+        )
     ChecklistRun.objects.bulk_create(runs)

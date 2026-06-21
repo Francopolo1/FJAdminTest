@@ -277,6 +277,10 @@ class ChecklistRun(models.Model):
     started_at        = models.DateTimeField(null=True, blank=True)
     completed_at      = models.DateTimeField(null=True, blank=True)
     created_at        = models.DateTimeField(auto_now_add=True)
+    total_items       = models.IntegerField(default=0, editable=False)
+    total_required    = models.IntegerField(default=0, editable=False)
+    answered_items    = models.IntegerField(default=0, editable=False)
+    answered_required = models.IntegerField(default=0, editable=False)
 
     class Meta:
         managed  = False
