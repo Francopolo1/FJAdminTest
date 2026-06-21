@@ -280,12 +280,66 @@ class ProgramFacility(models.Model):
     activity_change_date = models.DateTimeField(blank=True, null=True)
     comments = models.CharField(max_length=255, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
     visit_month_seed = models.SmallIntegerField(blank=True, null=True)
+    season_start = models.CharField(
+        max_length=5, blank=True, null=True,
+        help_text="Facility season start date as 'MM-DD' (e.g., '05-01' for May 1st). If set, activity_flag auto-adjusts based on season."
+    )
+    season_end = models.CharField(
+        max_length=5, blank=True, null=True,
+        help_text="Facility season end date as 'MM-DD' (e.g., '09-30' for Sept 30th). If set, activity_flag auto-adjusts based on season."
+    )
 
     class Meta:
         managed = False
         db_table = 'program_facilities'
         verbose_name_plural = "program facilities"
-    def __str__(self):        return f"{self.facility} in {self.program_facility_type} ({self.program_district})"
+
+    def __str__(self):
+        return f"{self.facility} in {self.program_facility_type} ({self.program_district})"
+
+    def is_in_season(self):
+        """Check if facility is currently in its active season.
+
+        Returns True if season_start and season_end are set and current date is within range.
+        Handles season ranges that span year boundaries (e.g., Nov 1 - Feb 28).
+        """
+        if not self.season_start or not self.season_end:
+            return True  # No season defined = always in season
+
+        try:
+            today = timezone.now().date()
+            start_month, start_day = map(int, self.season_start.split('-'))
+            end_month, end_day = map(int, self.season_end.split('-'))
+
+            # Create date objects for this year
+            start_date = today.replace(month=start_month, day=start_day)
+            end_date = today.replace(month=end_month, day=end_day)
+
+            # Handle season that spans year boundary (e.g., Nov 1 - Feb 28)
+            if start_date <= end_date:
+                # Normal case: season within same year
+                return start_date <= today <= end_date
+            else:
+                # Season spans year boundary
+                return today >= start_date or today <= end_date
+        except (ValueError, AttributeError):
+            return True  # Invalid season format = always in season
+
+    def get_activity_flag_for_season(self):
+        """Determine what activity_flag should be based on season.
+
+        Returns:
+        - 'I' if out of season and facility is not closed
+        - 'A' if in season and facility is not closed
+        - Current activity_flag if it's 'C' (closed)
+        """
+        if self.activity_flag == 'C':
+            return self.activity_flag  # Don't override closed status
+
+        if self.is_in_season():
+            return 'A'  # Active
+        else:
+            return 'I'  # Inactive
 
 
 class StepTypeRole(models.Model):

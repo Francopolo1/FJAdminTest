@@ -221,6 +221,9 @@ class ProgramFacilityAdmin(admin.ModelAdmin):
             "license_number", "license_expire_date", "tracking_id",
             "risk_assessment_level", "activity_flag",
         )}),
+        ("Seasonality", {"fields": (
+            "season_start", "season_end",
+        ), "description": "If both season_start and season_end are set, activity_flag will auto-adjust based on current date (A=active, I=inactive). Format: MM-DD (e.g., 05-01 for May 1st)."}),
         ("Visits", {"fields": (
             "start_date", "last_visit_date", "next_visit_date",
             "visit_month_seed", "activity_change_date",

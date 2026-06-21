@@ -191,6 +191,8 @@ class InspectorProgramFacilitySerializer(serializers.Serializer):
     activity_flag_label     = serializers.CharField(allow_null=True)
     last_visit_date         = serializers.DateTimeField(allow_null=True)
     next_visit_date         = serializers.DateTimeField(allow_null=True)
+    season_start            = serializers.CharField(allow_null=True)
+    season_end              = serializers.CharField(allow_null=True)
 
 
 class InspectorLandingSerializer(serializers.Serializer):

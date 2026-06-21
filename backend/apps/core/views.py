@@ -79,6 +79,18 @@ def _risk_fields(pf):
     }
 
 
+def _apply_seasonal_activity_flag(pf):
+    """Apply seasonal logic to activity_flag if facility has season_start and season_end.
+
+    Returns the activity_flag that should be displayed (does not modify the object).
+    If facility is seasonal, returns 'A' (active) if in season or 'I' (inactive) if out of season,
+    unless activity_flag is 'C' (closed) which is never overridden.
+    """
+    if pf.season_start and pf.season_end:
+        return pf.get_activity_flag_for_season()
+    return pf.activity_flag
+
+
 class InspectorLandingAPIView(APIView):
     """Role-specific landing data for inspectors: their assigned programs,
     program districts, and the program facilities within those districts."""
