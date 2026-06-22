@@ -125,7 +125,7 @@ export function InstanceDetailPage() {
     );
   }
 
-  const isFinalized = ["Approved", "Rejected", "Cancelled"].includes(instance.status);
+  const isFinalized = ["Approved", "Closed", "Rejected", "Cancelled"].includes(instance.status);
 
   return (
     <AppLayout

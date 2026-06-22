@@ -91,6 +91,7 @@ class WorkflowInstance(models.Model):
     STATUS_CHOICES = [
         ("Draft","Draft"), ("InProgress","In Progress"), ("Approved","Approved"),
         ("Rejected","Rejected"), ("Cancelled","Cancelled"), ("OnHold","On Hold"),
+        ("Closed","Closed"),
     ]
     instance_id      = GUIDField(primary_key=True, default=uuid.uuid4)
     workflow         = models.ForeignKey(WorkflowDefinition, on_delete=models.PROTECT,
