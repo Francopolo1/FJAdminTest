@@ -344,28 +344,58 @@ class ProgramFacility(models.Model):
         else:
             return 'I'  # Inactive
 
+    def get_effective_last_visit_date(self):
+        """Get the effective last visit date from the latest checklist run.
+
+        Returns the started_at of the most recent checklist_run for this facility's
+        workflow instances. Falls back to self.last_visit_date if no checklist runs exist.
+
+        Returns None if neither source has a date.
+        """
+        from apps.workflows.models import WorkflowInstance
+        from apps.checklists.models import ChecklistRun
+
+        # Find the latest checklist run started_at for this facility's instances
+        latest_checklist_run = (
+            ChecklistRun.objects
+            .filter(instance__program_facility=self)
+            .filter(started_at__isnull=False)
+            .order_by('-started_at')
+            .first()
+        )
+
+        if latest_checklist_run and latest_checklist_run.started_at:
+            return latest_checklist_run.started_at
+
+        # Fall back to manually set last_visit_date
+        return self.last_visit_date
+
     def calculate_next_visit_date(self):
-        """Calculate next_visit_date based on last_visit_date, risk frequency, and visit_month_seed.
+        """Calculate next_visit_date based on latest checklist run, risk frequency, and visit_month_seed.
 
         Returns the calculated next visit date, or None if calculation is not possible.
 
         Calculation logic:
-        - If no last_visit_date: returns None (no baseline to calculate from)
+        - Effective last_visit_date = latest checklist_run.started_at (or self.last_visit_date if no runs)
+        - If no effective last_visit_date: returns None (no baseline to calculate from)
         - If no risk_assessment_level: returns None (no frequency defined)
         - If risk_assessment_level has no visit_frequency_days: returns None
-        - Base calculation: last_visit_date + visit_frequency_days
+        - Base calculation: effective_last_visit_date + visit_frequency_days
         - If visit_month_seed is set: adjust date to align with that month
           * If adjusted date is in past, move to next year's occurrence of that month
 
         Example:
-        - last_visit_date: 2026-06-22, frequency: 90 days, visit_month_seed: None
+        - Latest checklist started: 2026-06-22, frequency: 90 days, visit_month_seed: None
           → next_visit_date: 2026-09-20
-        - last_visit_date: 2026-06-22, frequency: 90 days, visit_month_seed: 6 (June)
+        - Latest checklist started: 2026-06-22, frequency: 90 days, visit_month_seed: 6 (June)
           → next_visit_date: 2027-06-22 (same day in June next year)
-        - last_visit_date: 2026-06-22, frequency: 90 days, visit_month_seed: 9 (September)
+        - Latest checklist started: 2026-06-22, frequency: 90 days, visit_month_seed: 9 (September)
           → next_visit_date: 2026-09-22 (same day in September)
         """
-        if not self.last_visit_date or not self.risk_assessment_level:
+        # Get effective last visit date from latest checklist run or fall back to last_visit_date field
+        effective_last_visit = self.get_effective_last_visit_date()
+
+        if not effective_last_visit or not self.risk_assessment_level:
             return None
 
         if not self.risk_assessment_level.visit_frequency_days:
@@ -374,7 +404,7 @@ class ProgramFacility(models.Model):
         from datetime import timedelta
 
         # Calculate base next visit date using frequency
-        base_next_date = self.last_visit_date + timedelta(days=self.risk_assessment_level.visit_frequency_days)
+        base_next_date = effective_last_visit + timedelta(days=self.risk_assessment_level.visit_frequency_days)
 
         # If no month seed preference, return the base calculation
         if not self.visit_month_seed or self.visit_month_seed < 1 or self.visit_month_seed > 12:
