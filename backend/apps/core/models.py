@@ -341,6 +341,37 @@ class ProgramFacility(models.Model):
         else:
             return 'I'  # Inactive
 
+    def calculate_next_visit_date(self):
+        """Calculate next_visit_date based on last_visit_date and risk assessment frequency.
+
+        Returns the calculated next visit date, or None if calculation is not possible.
+
+        Calculation logic:
+        - If no last_visit_date: returns None (no baseline to calculate from)
+        - If no risk_assessment_level: returns None (no frequency defined)
+        - If risk_assessment_level has no visit_frequency_days: returns None
+        - Otherwise: returns last_visit_date + visit_frequency_days
+        """
+        if not self.last_visit_date or not self.risk_assessment_level:
+            return None
+
+        if not self.risk_assessment_level.visit_frequency_days:
+            return None
+
+        from datetime import timedelta
+        return self.last_visit_date + timedelta(days=self.risk_assessment_level.visit_frequency_days)
+
+    def update_next_visit_date(self):
+        """Recalculate and save next_visit_date based on current last_visit_date and risk level.
+
+        Returns True if next_visit_date was updated, False otherwise.
+        """
+        calculated_date = self.calculate_next_visit_date()
+        if calculated_date != self.next_visit_date:
+            self.next_visit_date = calculated_date
+            return True
+        return False
+
 
 class StepTypeRole(models.Model):
     """Lookup table mapping workflow step types to the role responsible for acting

@@ -215,6 +215,7 @@ class ProgramFacilityAdmin(admin.ModelAdmin):
     list_filter   = ["program_facility_type", "program_district", "activity_flag"]
     search_fields = ["facility__name", "license_number", "tracking_id"]
     autocomplete_fields = ["facility", "program_facility_type", "program_district"]
+    actions = ["recalculate_next_visit_dates"]
     fieldsets = (
         (None, {"fields": ("facility", "program_facility_type", "program_district", "profile")}),
         ("Licensing", {"fields": (
@@ -230,6 +231,21 @@ class ProgramFacilityAdmin(admin.ModelAdmin):
         )}),
         ("Contact / Notes", {"fields": ("facility_phone", "comments")}),
     )
+
+    def recalculate_next_visit_dates(self, request, queryset):
+        """Admin action: Recalculate next_visit_date for selected facilities."""
+        updated_count = 0
+        for facility in queryset:
+            if facility.update_next_visit_date():
+                facility.save()
+                updated_count += 1
+
+        self.message_user(
+            request,
+            f"Recalculated next_visit_date for {updated_count} facility(ies).",
+        )
+
+    recalculate_next_visit_dates.short_description = "Recalculate next_visit_date based on risk level frequency"
 
 # ── User program assignments ────────────────────────────────────────────────
 
