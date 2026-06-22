@@ -429,21 +429,23 @@ def on_response_saved(sender, instance, **kwargs):
     """
     run = instance.run
 
-    # Recalculate cached counters (answered_items, answered_required)
+    # Recalculate all cached counters from current template + responses
     answered_ids = set(
         run.responses
         .exclude(response_value__isnull=True)
         .exclude(response_value="")
         .values_list("item_id", flat=True)
     )
+    all_items = run.template.items.all()
+    required_items = all_items.filter(is_required=True)
 
+    run.total_items = all_items.count()
+    run.total_required = required_items.count()
     run.answered_items = len(answered_ids)
-    run.answered_required = run.template.items.filter(
-        is_required=True, item_id__in=answered_ids
-    ).count()
+    run.answered_required = required_items.filter(item_id__in=answered_ids).count()
 
     # Save updated counters to database
-    run.save(update_fields=["answered_items", "answered_required"])
+    run.save(update_fields=["total_items", "total_required", "answered_items", "answered_required"])
 
     run.mark_in_progress()
     run.try_auto_complete()
