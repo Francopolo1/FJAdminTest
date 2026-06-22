@@ -316,14 +316,10 @@ class ChecklistRun(models.Model):
         return self.template.blocks_advance and self.status not in ("Completed", "Skipped")
 
     # ── Computed counters ──────────────────────────────────────
-
-    @property
-    def total_items(self) -> int:
-        return self.template.items.count()
-
-    @property
-    def total_required(self) -> int:
-        return self.template.items.filter(is_required=True).count()
+    # Note: total_items, total_required, answered_items, answered_required are now cached
+    # database fields (not @property). They're populated by _create_checklist_runs() and
+    # updated via ChecklistItemResponse signals. This improves performance vs. computing
+    # on every access.
 
     @property
     def _answered_item_ids(self):
@@ -333,15 +329,6 @@ class ChecklistRun(models.Model):
             .exclude(response_value="")
             .values_list("item_id", flat=True)
         )
-
-    @property
-    def answered_items(self) -> int:
-        return len(self._answered_item_ids)
-
-    @property
-    def answered_required(self) -> int:
-        answered = self._answered_item_ids
-        return self.template.items.filter(is_required=True, item_id__in=answered).count()
 
     # ── Mutation helpers ──────────────────────────────────────
 
