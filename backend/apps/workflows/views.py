@@ -86,6 +86,8 @@ class WorkflowInstanceViewSet(viewsets.ModelViewSet):
 
         qs = WorkflowInstance.objects.select_related(
             "workflow", "initiated_by", "current_step",
+            "workflow__program_facility_type_activity",
+            "program_facility__program_facility_type__program",
         ).prefetch_related("tasks", "checklist_runs__template")
         # Non-admins see instances initiated by, or with a task assigned to,
         # themselves or their direct reports
@@ -135,6 +137,16 @@ class WorkflowInstanceViewSet(viewsets.ModelViewSet):
             )
         except ValueError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            # Catch unexpected errors (DB errors, missing relationships, etc.)
+            # and return as 400 instead of 500 so frontend can display to user
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.exception(f"Error advancing instance {pk}: {e}")
+            return Response(
+                {"detail": f"Failed to advance request: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         return Response(WorkflowInstanceSerializer(instance).data)
 
     @action(detail=True, methods=["post"], url_path="cancel")
@@ -145,15 +157,24 @@ class WorkflowInstanceViewSet(viewsets.ModelViewSet):
                 {"detail": "Instance is already finalized."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        from_status       = instance.status
-        instance.status   = "Cancelled"
-        instance.completed_at = timezone.now()
-        instance.save()
-        WorkflowAuditLog.objects.create(
-            instance=instance, actor=request.user,
-            action="Cancel", from_status=from_status, to_status="Cancelled",
-            notes=request.data.get("notes"),
-        )
+        try:
+            from_status       = instance.status
+            instance.status   = "Cancelled"
+            instance.completed_at = timezone.now()
+            instance.save()
+            WorkflowAuditLog.objects.create(
+                instance=instance, actor=request.user,
+                action="Cancel", from_status=from_status, to_status="Cancelled",
+                notes=request.data.get("notes"),
+            )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.exception(f"Error cancelling instance {pk}: {e}")
+            return Response(
+                {"detail": f"Failed to cancel request: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         return Response(WorkflowInstanceSerializer(instance).data)
 
     @action(detail=True, methods=["get"], url_path="audit-log")
@@ -173,6 +194,60 @@ class WorkflowInstanceViewSet(viewsets.ModelViewSet):
         ).values("trigger_event", "transition_name", "to_step__step_name")
         return Response(list(transitions))
 
+    @action(detail=False, methods=["get"], url_path="distributions")
+    def distributions(self, request):
+        from django.db.models import Count, F, Q
+        from apps.core.access import visible_user_ids
+
+        qs = WorkflowInstance.objects.all()
+        if not request.user.is_staff:
+            user_ids = visible_user_ids(request.user)
+            qs = qs.filter(
+                Q(initiated_by_id__in=user_ids) | Q(tasks__assigned_to_id__in=user_ids)
+            )
+
+        by_program = (
+            qs.annotate(
+                program_code=F("program_facility__program_facility_type__program__code"),
+                program_title=F("program_facility__program_facility_type__program__title"),
+            )
+            .values("program_code", "program_title")
+            .annotate(count=Count("instance_id", distinct=True))
+            .order_by("-count")
+        )
+        by_activity = (
+            qs.annotate(
+                activity=F("workflow__program_facility_type_activity__description"),
+            )
+            .values("activity")
+            .annotate(count=Count("instance_id", distinct=True))
+            .order_by("-count")
+        )
+        by_status = (
+            qs.values("status")
+            .annotate(count=Count("instance_id", distinct=True))
+            .order_by("status")
+        )
+        by_priority = (
+            qs.values("priority")
+            .annotate(count=Count("instance_id", distinct=True))
+            .order_by("priority")
+        )
+        by_category = (
+            qs.exclude(workflow__category__isnull=True).exclude(workflow__category="")
+            .annotate(category=F("workflow__category"))
+            .values("category")
+            .annotate(count=Count("instance_id", distinct=True))
+            .order_by("-count")[:8]
+        )
+        return Response({
+            "by_program": list(by_program),
+            "by_activity": list(by_activity),
+            "by_status": list(by_status),
+            "by_priority": list(by_priority),
+            "by_category": list(by_category),
+        })
+
 
 class WorkflowTaskViewSet(viewsets.ModelViewSet):
     serializer_class   = WorkflowTaskSerializer
@@ -184,7 +259,9 @@ class WorkflowTaskViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = WorkflowTask.objects.select_related(
-            "instance", "step", "assigned_to", "assigned_by", "delegated_to"
+            "instance", "step", "assigned_to", "assigned_by", "delegated_to",
+            "instance__workflow__program_facility_type_activity",
+            "instance__program_facility__program_facility_type__program",
         )
         if not self.request.user.is_staff:
             from apps.core.access import visible_user_ids

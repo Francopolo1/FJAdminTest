@@ -264,7 +264,9 @@ class ChecklistItemViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="upload-example", parser_classes=[MultiPartParser])
     def upload_example(self, request, pk=None):
-        """Upload an example image/PDF/video for this item and set example_url."""
+        """Upload an example image/PDF/video for this item and store it in example_file (R2/storage)."""
+        from django.db import transaction
+
         item = self.get_object()
         upload = request.FILES.get("file")
         if not upload:
@@ -280,13 +282,19 @@ class ChecklistItemViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        ext = upload.name.rsplit(".", 1)[-1].lower() if "." in upload.name else ""
-        filename = f"checklist_examples/{uuid.uuid4()}.{ext}" if ext else f"checklist_examples/{uuid.uuid4()}"
-        saved_path = default_storage.save(filename, upload)
+        with transaction.atomic():
+            # Delete old file if present (outside of the field assignment)
+            old_file = item.example_file
+            if old_file:
+                old_file.delete(save=False)
 
-        item.example_url = request.build_absolute_uri(default_storage.url(saved_path))
-        item.save(update_fields=["example_url"])
-        return Response(ChecklistItemSerializer(item).data)
+            # Assign and save atomically
+            item.example_file = upload
+            item.save(update_fields=["example_file"])
+
+        # Refresh from DB to get the serialized file URL
+        item.refresh_from_db()
+        return Response(ChecklistItemSerializer(item, context={"request": request}).data)
 
 
 # ── ChecklistRunViewSet ───────────────────────────────────────────────────────
@@ -316,6 +324,9 @@ class ChecklistRunViewSet(viewsets.ReadOnlyModelViewSet):
                 "template__workflow",
                 "instance__workflow",
                 "instance__initiated_by",
+                "instance__workflow__program_facility_type_activity",
+                "instance__program_facility__program_facility_type__program",
+                "instance__program_facility__facility__location",
                 "task",
             )
             .prefetch_related(
@@ -539,7 +550,9 @@ class ChecklistRunViewSet(viewsets.ReadOnlyModelViewSet):
                 "category":       item.category,
                 "is_required":    item.is_required,
                 "options":        item.options,
+                "default_value":  item.default_value,
                 "example_url":    item.example_url,
+                "example_file_url": item.example_file.url if item.example_file else None,
                 "answered":       is_answered,
                 "response_id":    resp.pk if resp else None,
                 "response_value": resp.response_value if resp else None,

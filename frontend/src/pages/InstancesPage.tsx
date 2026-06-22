@@ -24,6 +24,31 @@ const dateFormatter = new Intl.DateTimeFormat(undefined, {
   day: "numeric",
 });
 
+interface InstanceGroup {
+  key: string;
+  programTitle: string;
+  activity: string;
+  instances: WorkflowInstance[];
+}
+
+function groupInstances(instances: WorkflowInstance[]): InstanceGroup[] {
+  const groups = new Map<string, InstanceGroup>();
+  for (const instance of instances) {
+    const programTitle = instance.program_title || "Unassigned Program";
+    const activity = instance.activity || "Unassigned Activity";
+    const key = `${programTitle}|${activity}`;
+    let group = groups.get(key);
+    if (!group) {
+      group = { key, programTitle, activity, instances: [] };
+      groups.set(key, group);
+    }
+    group.instances.push(instance);
+  }
+  return [...groups.values()].sort((a, b) =>
+    a.programTitle.localeCompare(b.programTitle) || a.activity.localeCompare(b.activity),
+  );
+}
+
 export function InstancesPage() {
   const [instances, setInstances] = useState<WorkflowInstance[]>([]);
   const [count, setCount] = useState(0);
@@ -101,48 +126,47 @@ export function InstancesPage() {
         </form>
 
         <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Reference</th>
-                <th>Workflow</th>
-                <th>Status</th>
-                <th>Current Step</th>
-                <th>Initiated By</th>
-                <th>Started</th>
-                <th>Due</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={7}>
-                    <div className="empty-state"><p>Loading…</p></div>
-                  </td>
-                </tr>
-              ) : instances.length === 0 ? (
-                <tr>
-                  <td colSpan={7}>
-                    <div className="empty-state"><p>No requests found.</p></div>
-                  </td>
-                </tr>
-              ) : (
-                instances.map((instance) => (
-                  <tr key={instance.instance_id}>
-                    <td>
-                      <Link to={`/instances/${instance.instance_id}`}>{instance.reference_no}</Link>
-                    </td>
-                    <td>{instance.workflow_name}</td>
-                    <td><StatusBadge status={instance.status} /></td>
-                    <td>{instance.current_step_name ?? "—"}</td>
-                    <td>{instance.initiated_by_name}</td>
-                    <td>{dateFormatter.format(new Date(instance.started_at))}</td>
-                    <td>{instance.due_date ? dateFormatter.format(new Date(instance.due_date)) : "—"}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+          {isLoading ? (
+            <div className="empty-state"><p>Loading…</p></div>
+          ) : instances.length === 0 ? (
+            <div className="empty-state"><p>No requests found.</p></div>
+          ) : (
+            groupInstances(instances).map((group) => (
+              <div key={group.key} style={{ marginBottom: "1.5rem" }}>
+                <h3 style={{ margin: "0 0 .5rem" }}>
+                  {group.programTitle} — {group.activity}
+                </h3>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Reference</th>
+                      <th>Workflow</th>
+                      <th>Status</th>
+                      <th>Current Step</th>
+                      <th>Initiated By</th>
+                      <th>Started</th>
+                      <th>Due</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {group.instances.map((instance) => (
+                      <tr key={instance.instance_id}>
+                        <td>
+                          <Link to={`/instances/${instance.instance_id}`}>{instance.reference_no}</Link>
+                        </td>
+                        <td>{instance.workflow_name}</td>
+                        <td><StatusBadge status={instance.status} /></td>
+                        <td>{instance.current_step_name ?? "—"}</td>
+                        <td>{instance.initiated_by_name}</td>
+                        <td>{dateFormatter.format(new Date(instance.started_at))}</td>
+                        <td>{instance.due_date ? dateFormatter.format(new Date(instance.due_date)) : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))
+          )}
         </div>
 
         <Pagination page={page} pageSize={PAGE_SIZE} count={count} onPageChange={setPage} />

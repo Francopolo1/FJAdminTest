@@ -11,12 +11,30 @@ from .models import (
     WorkflowTask, WorkflowTransition, WorkflowAuditLog,
 )
 
-# Maps WorkflowStep.step_type to the UserProfile.role responsible for acting
-# on that step. Step types not listed here (e.g. "Automated") need no task.
-ROLE_BY_STEP_TYPE = {
-    "Manual": "inspector",
-    "Decision": "supervisor",
-}
+_STEP_ROLE_CACHE: dict[str, str | None] | None = None
+
+
+def _get_step_role(step_type: str) -> str | None:
+    """Return the responsible role for a step type, or None if automated.
+
+    Loads from workflow_step_type_roles on first call and caches for the
+    lifetime of the process.  Falls back to hardcoded defaults so the
+    engine still works before the table is seeded.
+    """
+    global _STEP_ROLE_CACHE
+    if _STEP_ROLE_CACHE is None:
+        try:
+            from apps.core.models import StepTypeRole
+            _STEP_ROLE_CACHE = {
+                r.step_type: r.responsible_role
+                for r in StepTypeRole.objects.all()
+            }
+        except Exception:
+            _STEP_ROLE_CACHE = {}
+    if _STEP_ROLE_CACHE:
+        return _STEP_ROLE_CACHE.get(step_type)
+    # Hardcoded fallback
+    return {"Manual": "inspector", "Decision": "supervisor"}.get(step_type)
 
 
 def generate_reference_no(workflow):
@@ -102,7 +120,7 @@ def advance_instance(instance, actor, trigger_event, comments=None):
 
         # Restrict the action to users with the role responsible for this
         # step (e.g. only supervisors may act on "Decision" steps).
-        required_role = ROLE_BY_STEP_TYPE.get(current_step.step_type)
+        required_role = _get_step_role(current_step.step_type)
         if required_role and not actor.is_staff:
             actor_role = getattr(getattr(actor, "profile", None), "role", None)
             if actor_role != required_role:
@@ -170,6 +188,11 @@ def advance_instance(instance, actor, trigger_event, comments=None):
             _create_checklist_runs(instance, next_step)
             _create_step_tasks(instance, next_step, assigned_by=actor)
 
+            # Run step-type-specific automated actions
+            if next_step.step_type == "ComplianceCheck":
+                from apps.enforcement.services import run_compliance_check
+                run_compliance_check(instance, actor=actor)
+
         WorkflowAuditLog.objects.create(
             instance=instance,
             actor=actor,
@@ -178,6 +201,19 @@ def advance_instance(instance, actor, trigger_event, comments=None):
             to_status=to_status,
             notes=comments,
         )
+
+        # Auto-advance if the landing step has no responsible role (automated)
+        # and has an outgoing "Auto" transition.  Recursion is safe because:
+        #   - each call moves to a different step (unique_together on from_step+trigger_event)
+        #   - correctly-designed workflows don't loop automated steps back on themselves
+        if not is_final and _get_step_role(next_step.step_type) is None:
+            auto_transition = WorkflowTransition.objects.filter(
+                from_step=next_step,
+                trigger_event="Auto",
+            ).first()
+            if auto_transition:
+                return advance_instance(instance, actor=actor, trigger_event="Auto")
+
         return instance
 
 
@@ -189,7 +225,7 @@ def _create_step_tasks(instance, step, assigned_by):
     If nobody with the required role is assigned to the district, fall back
     to the instance's initiator so the step still has an owner.
     """
-    role = ROLE_BY_STEP_TYPE.get(step.step_type)
+    role = _get_step_role(step.step_type)
     if role is None:
         return
 
@@ -235,8 +271,21 @@ def _create_checklist_runs(instance, step):
                    __import__("django.db.models", fromlist=["Q"]).Q(step__isnull=True)
     ).exclude(pk__in=existing)
 
-    runs = [
-        ChecklistRun(instance=instance, template=t, status="NotStarted")
-        for t in templates
-    ]
+    runs = []
+    for t in templates:
+        # Calculate item counts for this template
+        total_items = t.items.count()
+        total_required = t.items.filter(is_required=True).count()
+
+        runs.append(
+            ChecklistRun(
+                instance=instance,
+                template=t,
+                status="NotStarted",
+                total_items=total_items,
+                total_required=total_required,
+                answered_items=0,
+                answered_required=0,
+            )
+        )
     ChecklistRun.objects.bulk_create(runs)

@@ -1,11 +1,18 @@
 import { api } from "./api";
 import type {
+  ActivityFlagOption,
+  AddressValidationResult,
+  FacilityCreatePayload,
+  FacilityCreateResult,
   FacilityDetail,
   FacilityFilterOptions,
   FacilityListItem,
   InspectorFacilityDetail,
   InspectorLanding,
   InspectorProgram,
+  ProgramDistrictOption,
+  ProgramFacilityTypeOption,
+  RiskAssessmentLevelOption,
   SupervisorLanding,
   WorkflowInstanceSummary,
 } from "../types";
@@ -93,6 +100,54 @@ export async function updateFacilityProgramFacilityProfile(
     `/api/core/facilities/program-facilities/${programFacilityId}/profile/`,
     { profile }
   );
+  return data;
+}
+
+export async function validateAddress(payload: {
+  address_line1: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+}): Promise<AddressValidationResult> {
+  const { data } = await api.post<AddressValidationResult>("/api/core/facilities/validate-address/", payload);
+  return data;
+}
+
+export async function fetchProgramFacilityTypes(programId?: string): Promise<ProgramFacilityTypeOption[]> {
+  const { data } = await api.get<ProgramFacilityTypeOption[]>("/api/core/facilities/program-facility-types/", {
+    params: programId ? { program: programId } : {},
+  });
+  return data;
+}
+
+export async function fetchProgramDistricts(programId?: string): Promise<ProgramDistrictOption[]> {
+  const { data } = await api.get<ProgramDistrictOption[]>("/api/core/facilities/program-districts/", {
+    params: programId ? { program: programId } : {},
+  });
+  return data;
+}
+
+export async function fetchActivityFlags(): Promise<ActivityFlagOption[]> {
+  const { data } = await api.get<ActivityFlagOption[]>("/api/core/facilities/activity-flags/");
+  return data;
+}
+
+export async function fetchRiskAssessmentLevels(programFacilityTypeId?: string): Promise<RiskAssessmentLevelOption[]> {
+  const { data } = await api.get<RiskAssessmentLevelOption[]>("/api/core/facilities/risk-assessment-levels/", {
+    params: programFacilityTypeId ? { program_facility_type_id: programFacilityTypeId } : {},
+  });
+  return data;
+}
+
+export async function fetchNextTrackingId(programFacilityTypeId: string): Promise<string> {
+  const { data } = await api.get<{ tracking_id: string }>("/api/core/facilities/next-tracking-id/", {
+    params: { program_facility_type_id: programFacilityTypeId },
+  });
+  return data.tracking_id;
+}
+
+export async function createFacility(payload: FacilityCreatePayload): Promise<FacilityCreateResult> {
+  const { data } = await api.post<FacilityCreateResult>("/api/core/facilities/create/", payload);
   return data;
 }
 

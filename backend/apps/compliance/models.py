@@ -100,6 +100,10 @@ class FineTier(models.Model):
     fine_amount               = models.DecimalField(max_digits=12, decimal_places=2)
     days_to_correct           = models.IntegerField(null=True, blank=True)
     suspension_required       = models.BooleanField(default=False)
+    compliance_window         = models.IntegerField(
+        null=True, blank=True,
+        help_text="Number of days in the compliance range for this tier.",
+    )
 
     class Meta:
         db_table        = "fine_tiers"

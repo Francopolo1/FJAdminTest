@@ -75,7 +75,6 @@ class ActivityAdmin(admin.ModelAdmin):
     ordering      = ["code"]
     readonly_fields = ["activity_id", "created_at", "updated_at"]
 
-
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
     list_display  = ["code", "title", "building", "campus", "is_active"]

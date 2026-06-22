@@ -14,7 +14,8 @@ from apps.workflows.serializers import WorkflowInstanceListSerializer
 from apps.workflows.services import generate_reference_no, submit_instance
 from apps.financials.models import Program
 from .models import (
-    AuthUser, AuditLog, FacilityType, ProgramFacility, UserProfile, UserProgram, UserProgramDistrict,
+    AuthUser, AuditLog, FacilityType, ProgramFacility, RiskAssessmentLevel,
+    UserProfile, UserProgram, UserProgramDistrict,
 )
 from .serializers import (
     AuthUserSerializer,
@@ -56,6 +57,40 @@ def _assigned_program_district_ids(user):
     )
 
 
+_ACTIVITY_FLAG_LABELS: dict[str, str] = {}
+
+
+def _activity_flag_label(code: str | None) -> str | None:
+    """Resolve activity flag code to label, lazy-loading from DB on first call."""
+    global _ACTIVITY_FLAG_LABELS
+    if not _ACTIVITY_FLAG_LABELS:
+        from .models import ActivityFlag
+        _ACTIVITY_FLAG_LABELS = dict(ActivityFlag.objects.values_list("code", "label"))
+    return _ACTIVITY_FLAG_LABELS.get(code) if code else None
+
+
+def _risk_fields(pf):
+    rl = pf.risk_assessment_level
+    return {
+        "risk_assessment_level_id": rl.id if rl else None,
+        "risk_assessment":          rl.code if rl else None,
+        "risk_assessment_label":    rl.label if rl else None,
+        "visit_frequency_days":     rl.visit_frequency_days if rl else None,
+    }
+
+
+def _apply_seasonal_activity_flag(pf):
+    """Apply seasonal logic to activity_flag if facility has season_start and season_end.
+
+    Returns the activity_flag that should be displayed (does not modify the object).
+    If facility is seasonal, returns 'A' (active) if in season or 'I' (inactive) if out of season,
+    unless activity_flag is 'C' (closed) which is never overridden.
+    """
+    if pf.season_start and pf.season_end:
+        return pf.get_activity_flag_for_season()
+    return pf.activity_flag
+
+
 class InspectorLandingAPIView(APIView):
     """Role-specific landing data for inspectors: their assigned programs,
     program districts, and the program facilities within those districts."""
@@ -86,9 +121,10 @@ class InspectorLandingAPIView(APIView):
         ]
 
         district_ids = _assigned_program_district_ids(user)
-        facilities_qs = (
+        facilities_qs = list(
             ProgramFacility.objects.filter(program_district_id__in=district_ids)
-            .select_related("facility", "program_district__program", "program_facility_type__facility_type")
+            .select_related("facility", "program_district__program", "program_facility_type__facility_type",
+                            "risk_assessment_level")
         )
         program_facilities = [
             {
@@ -101,8 +137,9 @@ class InspectorLandingAPIView(APIView):
                 "facility_type":       (pf.program_facility_type.facility_type.description or "").strip() or None
                                         if pf.program_facility_type and pf.program_facility_type.facility_type else None,
                 "license_number":      pf.license_number,
-                "risk_assessment":     pf.risk_assessment,
+                **_risk_fields(pf),
                 "activity_flag":       pf.activity_flag,
+                "activity_flag_label": _activity_flag_label(pf.activity_flag),
                 "last_visit_date":     pf.last_visit_date,
                 "next_visit_date":     pf.next_visit_date,
             }
@@ -227,9 +264,10 @@ class InspectorFacilityDetailAPIView(APIView):
 
         district_ids = _assigned_program_district_ids(request.user)
 
-        assignments_qs = (
+        assignments_qs = list(
             ProgramFacility.objects.filter(facility_id=facility_id, program_district_id__in=district_ids)
-            .select_related("facility__location", "program_district__program", "program_facility_type__facility_type")
+            .select_related("facility__location", "program_district__program", "program_facility_type__facility_type",
+                            "risk_assessment_level")
             .prefetch_related(
                 "instances__workflow",
                 "instances__current_step",
@@ -238,9 +276,8 @@ class InspectorFacilityDetailAPIView(APIView):
             )
         )
 
-        if not assignments_qs.exists():
+        if not assignments_qs:
             raise NotFound("Facility not found in your assigned districts.")
-
         facility = assignments_qs[0].facility
         assignments = []
         for pf in assignments_qs:
@@ -252,8 +289,9 @@ class InspectorFacilityDetailAPIView(APIView):
                                   if pf.program_facility_type and pf.program_facility_type.facility_type else None,
                 "profile":            pf.profile,
                 "license_number":     pf.license_number,
-                "risk_assessment":    pf.risk_assessment,
+                **_risk_fields(pf),
                 "activity_flag":      pf.activity_flag,
+                "activity_flag_label": _activity_flag_label(pf.activity_flag),
                 "last_visit_date":    pf.last_visit_date,
                 "next_visit_date":    pf.next_visit_date,
                 "instances":          WorkflowInstanceListSerializer(
@@ -425,6 +463,7 @@ class FacilityListAPIView(APIView):
                                         if pf.facility and pf.facility.location else None,
                 "license_number":      pf.license_number,
                 "activity_flag":       pf.activity_flag,
+                "activity_flag_label": _activity_flag_label(pf.activity_flag),
             }
             for pf in qs
         ]
@@ -460,9 +499,10 @@ class FacilityDetailAPIView(APIView):
         except ValueError:
             raise NotFound("Facility not found.")
 
-        assignments_qs = (
+        assignments_qs = list(
             ProgramFacility.objects.filter(facility_id=facility_id)
-            .select_related("facility__location", "program_district__program", "program_facility_type__facility_type")
+            .select_related("facility__location", "program_district__program", "program_facility_type__facility_type",
+                            "risk_assessment_level")
             .prefetch_related(
                 "instances__workflow",
                 "instances__current_step",
@@ -471,9 +511,8 @@ class FacilityDetailAPIView(APIView):
             )
         )
 
-        if not assignments_qs.exists():
+        if not assignments_qs:
             raise NotFound("Facility not found.")
-
         facility = assignments_qs[0].facility
         assignments = [
             {
@@ -484,10 +523,11 @@ class FacilityDetailAPIView(APIView):
                                   if pf.program_facility_type and pf.program_facility_type.facility_type else None,
                 "profile":         pf.profile,
                 "license_number":  pf.license_number,
-                "risk_assessment": pf.risk_assessment,
-                "activity_flag":   pf.activity_flag,
-                "last_visit_date": pf.last_visit_date,
-                "next_visit_date": pf.next_visit_date,
+                **_risk_fields(pf),
+                "activity_flag":       pf.activity_flag,
+                "activity_flag_label": _activity_flag_label(pf.activity_flag),
+                "last_visit_date":     pf.last_visit_date,
+                "next_visit_date":     pf.next_visit_date,
                 "instances":       WorkflowInstanceListSerializer(
                     pf.instances.all().order_by("-started_at"), many=True
                 ).data,
@@ -602,3 +642,308 @@ class FacilityStartActivityWorkflowAPIView(APIView):
             return Response({"detail": str(e)}, status=400)
 
         return Response(WorkflowInstanceListSerializer(instance).data, status=201)
+
+
+# ── Facility creation ────────────────────────────────────────────────────────
+
+class AddressValidationAPIView(APIView):
+    """Validate and geocode an address via Nominatim (OpenStreetMap)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        import urllib.request
+        import urllib.parse
+        import json as json_mod
+
+        address_line1 = request.data.get("address_line1", "").strip()
+        city          = request.data.get("city", "").strip()
+        state         = request.data.get("state", "").strip()
+        postal_code   = request.data.get("postal_code", "").strip()
+
+        if not address_line1:
+            return Response({"valid": False, "error": "address_line1 is required."}, status=400)
+
+        query = ", ".join(filter(None, [address_line1, city, state, postal_code]))
+        params = urllib.parse.urlencode({
+            "q": query,
+            "format": "json",
+            "addressdetails": 1,
+            "limit": 1,
+            "countrycodes": "us",
+        })
+        url = f"https://nominatim.openstreetmap.org/search?{params}"
+        req = urllib.request.Request(url, headers={"User-Agent": "FJAdmin/1.0 (admin@example.com)"})
+        try:
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                results = json_mod.loads(resp.read())
+        except Exception:
+            return Response({"valid": False, "error": "Address validation service unavailable."}, status=503)
+
+        if not results:
+            return Response({"valid": False, "error": "Address not found. Please verify and try again."})
+
+        r    = results[0]
+        addr = r.get("address", {})
+        return Response({
+            "valid":           True,
+            "latitude":        float(r["lat"]),
+            "longitude":       float(r["lon"]),
+            "display_address": r.get("display_name", ""),
+            "city":     addr.get("city") or addr.get("town") or addr.get("village") or city,
+            "state":    addr.get("state", state),
+            "postal_code": addr.get("postcode", postal_code),
+            "county":   addr.get("county") or None,
+        })
+
+
+class ProgramFacilityTypeListAPIView(APIView):
+    """List ProgramFacilityTypes, optionally filtered by program."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .models import ProgramFacilityType
+        qs = (
+            ProgramFacilityType.objects
+            .select_related("program", "facility_type")
+            .order_by("program__code", "facility_type__code")
+        )
+        program_id = request.query_params.get("program")
+        if program_id:
+            qs = qs.filter(program_id=program_id)
+        return Response([
+            {
+                "program_facility_type_id":   pft.program_facility_type_id,
+                "program_id":                 pft.program_id,
+                "program_code":               pft.program.code,
+                "program_title":              pft.program.title,
+                "facility_type_id":           pft.facility_type_id,
+                "facility_type_code":         pft.facility_type.code,
+                "facility_type_description":  pft.facility_type.description,
+                "description":                pft.description,
+                "profile_template":           pft.profile_template,
+            }
+            for pft in qs
+        ])
+
+
+class ProgramDistrictListAPIView(APIView):
+    """List ProgramDistricts, optionally filtered by program."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .models import ProgramDistricts
+        qs = (
+            ProgramDistricts.objects
+            .select_related("program")
+            .order_by("program__code", "district")
+        )
+        program_id = request.query_params.get("program")
+        if program_id:
+            qs = qs.filter(program_id=program_id)
+        return Response([
+            {
+                "program_district_id": pd.program_district_id,
+                "program_id":          pd.program_id,
+                "program_code":        pd.program.code,
+                "district":            pd.district,
+                "description":         pd.description,
+            }
+            for pd in qs
+        ])
+
+
+def _next_tracking_id(pft) -> str:
+    """
+    Generate the next tracking ID for a ProgramFacilityType.
+    Format: {YYYY}-{PROGRAM_CODE}-{FACILITY_TYPE_CODE}-{NNNN}
+    NNNN resets to 0001 each calendar year.
+    """
+    from django.utils import timezone as tz
+    year         = tz.now().year
+    program_code = (pft.program.code or "").strip().upper()
+    type_code    = (pft.facility_type.code or "").strip().upper()
+    prefix       = f"{year}-{program_code}-{type_code}-"
+
+    max_seq = 0
+    for tid in ProgramFacility.objects.filter(
+        tracking_id__startswith=prefix,
+    ).values_list("tracking_id", flat=True):
+        try:
+            max_seq = max(max_seq, int(tid[len(prefix):]))
+        except (ValueError, IndexError):
+            continue
+
+    return f"{prefix}{max_seq + 1:04d}"
+
+
+class ActivityFlagListAPIView(APIView):
+    """List all ActivityFlag codes (global lookup — no filter needed)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .models import ActivityFlag
+        return Response([
+            {"code": f.code, "label": f.label, "description": f.description}
+            for f in ActivityFlag.objects.all()
+        ])
+
+
+class RiskAssessmentLevelListAPIView(APIView):
+    """List RiskAssessmentLevels for a given ProgramFacilityType."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        pft_id = request.query_params.get("program_facility_type_id")
+        qs = RiskAssessmentLevel.objects.order_by("visit_frequency_days")
+        if pft_id:
+            qs = qs.filter(program_facility_type_id=pft_id)
+        return Response([
+            {
+                "id":                   r.id,
+                "code":                 r.code,
+                "label":                r.label,
+                "visit_frequency_days": r.visit_frequency_days,
+                "description":          r.description,
+                "program_facility_type_id": r.program_facility_type_id,
+            }
+            for r in qs
+        ])
+
+
+class NextTrackingIdAPIView(APIView):
+    """Return the next auto-generated tracking ID for a given ProgramFacilityType."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .models import ProgramFacilityType
+        pft_id = request.query_params.get("program_facility_type_id")
+        if not pft_id:
+            return Response({"detail": "program_facility_type_id is required."}, status=400)
+        try:
+            pft = ProgramFacilityType.objects.select_related("program", "facility_type").get(pk=pft_id)
+        except ProgramFacilityType.DoesNotExist:
+            return Response({"detail": "ProgramFacilityType not found."}, status=404)
+        return Response({"tracking_id": _next_tracking_id(pft)})
+
+
+class FacilityCreateAPIView(APIView):
+    """
+    Atomically create FacilityLocation + Facility + ProgramFacility.
+
+    Required body fields:
+      facility_name, address_line1, city, state, postal_code,
+      program_facility_type_id, program_district_id
+
+    Optional:
+      address_line2, latitude, longitude, county,
+      license_number, license_expire_date, facility_phone,
+      tracking_id, risk_assessment, start_date, activity_flag,
+      comments, profile
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from django.db import transaction as db_transaction
+        from django.utils import timezone as tz
+        from .models import FacilityLocation, Facility, ProgramFacility, ProgramFacilityType, ProgramDistricts
+
+        d = request.data
+
+        facility_name            = (d.get("facility_name") or "").strip()
+        address_line1            = (d.get("address_line1") or "").strip()
+        city                     = (d.get("city") or "").strip()
+        state                    = (d.get("state") or "").strip()
+        postal_code              = (d.get("postal_code") or "").strip()
+        program_facility_type_id = d.get("program_facility_type_id")
+        program_district_id      = d.get("program_district_id")
+
+        errors = {}
+        if not facility_name:
+            errors["facility_name"] = "This field is required."
+        if not address_line1:
+            errors["address_line1"] = "This field is required."
+        if not city:
+            errors["city"] = "This field is required."
+        if not state:
+            errors["state"] = "This field is required."
+        if not postal_code:
+            errors["postal_code"] = "This field is required."
+        if not program_facility_type_id:
+            errors["program_facility_type_id"] = "This field is required."
+        if not program_district_id:
+            errors["program_district_id"] = "This field is required."
+        if errors:
+            return Response(errors, status=400)
+
+        try:
+            pft = ProgramFacilityType.objects.select_related("program", "facility_type").get(pk=program_facility_type_id)
+        except ProgramFacilityType.DoesNotExist:
+            return Response({"program_facility_type_id": "Not found."}, status=400)
+
+        try:
+            district = ProgramDistricts.objects.get(pk=program_district_id)
+        except ProgramDistricts.DoesNotExist:
+            return Response({"program_district_id": "Not found."}, status=400)
+
+        city_state_zip = ", ".join(filter(None, [city, f"{state} {postal_code}".strip()]))
+        now = tz.now()
+
+        with db_transaction.atomic():
+            location = FacilityLocation.objects.create(
+                addressline1        = address_line1,
+                addressline2        = d.get("address_line2") or None,
+                city                = city,
+                stateprovince       = state,
+                postalcode          = postal_code,
+                citystatezip        = city_state_zip,
+                latitude            = d.get("latitude") or None,
+                longitude           = d.get("longitude") or None,
+                countyname          = d.get("county") or None,
+                displayline1        = address_line1,
+                displayline2        = d.get("address_line2") or None,
+                displaycitystatezip = city_state_zip,
+                createdby           = request.user.id,
+                creationdate        = now,
+                lasteditby          = request.user.id,
+                lasteditdate        = now,
+            )
+
+            facility = Facility.objects.create(
+                location        = location,
+                name            = facility_name,
+                activity_status = True,
+                active_date     = now,
+                created_by      = request.user.id,
+                creation_date   = now,
+                last_edit_by    = request.user.id,
+                last_edit_date  = now,
+            )
+
+            pf = ProgramFacility.objects.create(
+                facility              = facility,
+                program_facility_type = pft,
+                program_district      = district,
+                profile               = d.get("profile") or pft.profile_template or "{}",
+                license_number        = d.get("license_number") or None,
+                license_expire_date   = d.get("license_expire_date") or None,
+                facility_phone        = d.get("facility_phone") or None,
+                tracking_id           = (d.get("tracking_id") or "").strip() or _next_tracking_id(pft),
+                risk_assessment_level_id = d.get("risk_assessment_levels_id") or None,
+                start_date            = d.get("start_date") or None,
+                activity_flag         = d.get("activity_flag") or "A",
+                comments              = d.get("comments") or None,
+            )
+
+        return Response({
+            "facility_id":         facility.facility_id,
+            "program_facility_id": pf.program_facility_id,
+            "facility_name":       facility.name,
+            "address":             f"{address_line1}, {city_state_zip}",
+        }, status=201)

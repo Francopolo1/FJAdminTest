@@ -14,6 +14,13 @@ from .views import (
     FacilityDetailAPIView,
     FacilityProgramFacilityProfileAPIView,
     FacilityStartActivityWorkflowAPIView,
+    AddressValidationAPIView,
+    ProgramFacilityTypeListAPIView,
+    ProgramDistrictListAPIView,
+    ActivityFlagListAPIView,
+    NextTrackingIdAPIView,
+    RiskAssessmentLevelListAPIView,
+    FacilityCreateAPIView,
 )
 
 router = DefaultRouter()
@@ -39,6 +46,13 @@ urlpatterns = [
         name="supervisor-direct-report-programs",
     ),
     path("facilities/filters/", FacilityFilterOptionsAPIView.as_view(), name="facility-filters"),
+    path("facilities/validate-address/", AddressValidationAPIView.as_view(), name="facility-validate-address"),
+    path("facilities/program-facility-types/", ProgramFacilityTypeListAPIView.as_view(), name="facility-pft-list"),
+    path("facilities/program-districts/", ProgramDistrictListAPIView.as_view(), name="facility-district-list"),
+    path("facilities/activity-flags/", ActivityFlagListAPIView.as_view(), name="facility-activity-flags"),
+    path("facilities/next-tracking-id/", NextTrackingIdAPIView.as_view(), name="facility-next-tracking-id"),
+    path("facilities/risk-assessment-levels/", RiskAssessmentLevelListAPIView.as_view(), name="facility-risk-levels"),
+    path("facilities/create/", FacilityCreateAPIView.as_view(), name="facility-create"),
     path(
         "facilities/program-facilities/<str:program_facility_id>/profile/",
         FacilityProgramFacilityProfileAPIView.as_view(),

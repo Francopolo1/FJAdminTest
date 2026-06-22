@@ -36,6 +36,17 @@ interface ViolationFormState {
   date: string;
 }
 
+function normalizeDefaultValue(defaultValue: string | null): string {
+  if (!defaultValue) return "";
+  try {
+    const parsed = JSON.parse(defaultValue);
+    if (typeof parsed === "string") return parsed;
+  } catch {
+    // not JSON-encoded, use as-is
+  }
+  return defaultValue;
+}
+
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -105,7 +116,7 @@ export function ChecklistRunDetailPage() {
         const next: Record<string, AnswerState> = {};
         for (const item of progressData.items) {
           next[item.item_id] = prev[item.item_id] ?? {
-            value: item.response_value ?? "",
+            value: item.response_value ?? (item.response_type === "MultiChoice" ? normalizeDefaultValue(item.default_value) : ""),
             notes: item.notes ?? "",
             boxFolderUrl: item.box_folder_url ?? "",
           };
@@ -316,7 +327,57 @@ export function ChecklistRunDetailPage() {
           <span className={`badge ${RUN_STATUS_BADGE[run.status] ?? "badge-gray"}`}>{run.status}</span>
         </div>
         {run.template_description && <p style={{ color: "var(--ink-600)", fontSize: 13 }}>{run.template_description}</p>}
+
         <div className="detail-grid">
+          {run.facility_name && (
+            <div>
+              <div className="detail-field-label">Facility</div>
+              <div className="detail-field-value">{run.facility_name}</div>
+              {(run.facility_address || run.facility_city_state_zip) && (
+                <div style={{ fontSize: 12, color: "var(--ink-500)", marginTop: 2 }}>
+                  {run.facility_address && <div>{run.facility_address}</div>}
+                  {run.facility_city_state_zip && <div>{run.facility_city_state_zip}</div>}
+                </div>
+              )}
+            </div>
+          )}
+          {run.facility_phone && (
+            <div>
+              <div className="detail-field-label">Phone</div>
+              <div className="detail-field-value">{run.facility_phone}</div>
+            </div>
+          )}
+          {run.license_number && (
+            <div>
+              <div className="detail-field-label">License #</div>
+              <div className="detail-field-value">{run.license_number}</div>
+            </div>
+          )}
+          {run.license_expire_date && (
+            <div>
+              <div className="detail-field-label">License Expires</div>
+              <div className="detail-field-value">
+                {new Date(run.license_expire_date).toLocaleDateString()}
+              </div>
+            </div>
+          )}
+          {run.tracking_id && (
+            <div>
+              <div className="detail-field-label">Tracking ID</div>
+              <div className="detail-field-value">{run.tracking_id}</div>
+            </div>
+          )}
+          {run.started_at && (
+            <div>
+              <div className="detail-field-label">Started</div>
+              <div className="detail-field-value">
+                {new Date(run.started_at).toLocaleString()}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="detail-grid" style={{ marginTop: "1rem" }}>
           <div>
             <div className="detail-field-label">Overall Completion</div>
             <div className="progress" style={{ marginTop: 4 }}>
@@ -358,12 +419,14 @@ export function ChecklistRunDetailPage() {
               {item.item_text}{item.is_required && <span style={{ color: "var(--red-600)" }}> *</span>}
             </div>
             {item.help_text && <div className="checklist-item-help">{item.help_text}</div>}
-            {item.example_url && (
+            {(item.example_file_url || item.example_url) && (
               <div className="checklist-item-help">
                 <button
                   type="button"
                   className="link-button"
-                  onClick={() => setPreviewUrl(resolveExampleUrl(item.example_url!))}
+                  onClick={() => setPreviewUrl(
+                    item.example_file_url ?? resolveExampleUrl(item.example_url!)
+                  )}
                 >
                   View example
                 </button>
@@ -565,7 +628,7 @@ export function ChecklistRunDetailPage() {
                 Close
               </button>
             </div>
-            <div className="modal-body">{renderExamplePreview(previewUrl)}</div>
+            <div className="modal-body"><ExamplePreview url={previewUrl} /></div>
           </div>
         </div>
       )}
@@ -573,25 +636,56 @@ export function ChecklistRunDetailPage() {
   );
 }
 
-function renderExamplePreview(url: string) {
-  switch (exampleKind(url)) {
-    case "image":
-      return <img src={url} alt="Example" />;
-    case "video":
+function ExamplePreview({ url }: { url: string }) {
+  const [imgError, setImgError] = useState(false);
+  const kind = exampleKind(url);
+
+  if (kind === "image") {
+    if (imgError) {
       return (
-        <video src={url} controls autoPlay>
-          Your browser does not support embedded video.
-        </video>
+        <div className="example-unavailable">
+          <p>This example image could not be loaded.</p>
+          <a href={url} target="_blank" rel="noopener noreferrer">
+            Try opening it directly
+          </a>
+        </div>
       );
-    case "pdf":
-      return <iframe src={url} title="Example" />;
-    default:
-      return (
-        <a href={url} target="_blank" rel="noopener noreferrer">
-          Open example in a new tab
-        </a>
-      );
+    }
+    return (
+      <img
+        src={url}
+        alt="Example"
+        onError={() => setImgError(true)}
+      />
+    );
   }
+
+  if (kind === "video") {
+    return (
+      <video src={url} controls autoPlay>
+        Your browser does not support embedded video.
+      </video>
+    );
+  }
+
+  if (kind === "pdf") {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: ".5rem", width: "100%" }}>
+        <iframe src={url} title="Example" />
+        <a href={url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "var(--ink-500)" }}>
+          Open in new tab ↗
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <div className="example-unavailable">
+      <a href={url} target="_blank" rel="noopener noreferrer" className="btn btn-primary">
+        Open example in a new tab ↗
+      </a>
+    </div>
+  );
 }
 
 function renderInput(

@@ -38,7 +38,7 @@ class AuthUser(AbstractBaseUser, PermissionsMixin):
 
     class Meta:
         db_table = "auth_user"
-        managed  = False
+        managed = True
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}".strip() or self.username
@@ -85,7 +85,7 @@ class UserProfile(models.Model):
 
     class Meta:
         db_table = "user_profile"
-        managed  = False
+        managed = True
 
     def __str__(self):
         role_name = UserRole.objects.filter(pk=self.role).values_list("name", flat=True).first()
@@ -104,7 +104,7 @@ class AuditLog(models.Model):
 
     class Meta:
         db_table = "audit_log"
-        managed  = False
+        managed = True
         ordering = ["-changed_at"]
 
     def __str__(self):
@@ -112,11 +112,11 @@ class AuditLog(models.Model):
 
 class FacilityType(models.Model):
     facility_type_id = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
-    code = models.CharField(max_length=5, db_collation='SQL_Latin1_General_CP1_CI_AS')
-    description = models.CharField(max_length=50, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
+    code = models.CharField(max_length=5)
+    description = models.CharField(max_length=50, blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'facility_types'
     def __str__(self):
         return f"{self.code} ({self.description})"
@@ -125,22 +125,22 @@ class ProgramFacilityType(models.Model):
     program_facility_type_id = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     program = models.ForeignKey('financials.Program', models.DO_NOTHING)
     facility_type = models.ForeignKey(FacilityType, models.DO_NOTHING)
-    profile_template = models.CharField(max_length=4000, db_collation='SQL_Latin1_General_CP1_CI_AS')
-    description = models.CharField(max_length=200, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
+    profile_template = models.CharField(max_length=4000)
+    description = models.CharField(max_length=200, blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'program_facility_types'
     def __str__(self):
         return f"{self.program.code} - {self.facility_type.code} ({self.description})"
 
 class Specialtracking(models.Model):
     specialtracking_id = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
-    trackingcode = models.CharField(max_length=20, db_collation='SQL_Latin1_General_CP1_CI_AS')
-    trackingdescription = models.CharField(max_length=100, db_collation='SQL_Latin1_General_CP1_CI_AS')
+    trackingcode = models.CharField(max_length=20)
+    trackingdescription = models.CharField(max_length=100)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'specialtracking'
 
     def __str__(self):        return f"{self.trackingcode} ({self.trackingdescription})"
@@ -154,10 +154,10 @@ class ProgramFacilityTypeActivity(models.Model):
     )
     program_facility_type = models.ForeignKey('ProgramFacilityType', models.DO_NOTHING)
     specialtracking = models.ForeignKey('Specialtracking', models.DO_NOTHING, blank=True, null=True)
-    description = models.CharField(max_length=100, db_collation='SQL_Latin1_General_CP1_CI_AS')
+    description = models.CharField(max_length=100)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'program_facility_type_activities'
     def __str__(self):
         return f"{self.program_facility_type} - {self.description}"
@@ -168,91 +168,92 @@ class FacilityLocation(models.Model):
     ycoordinate = models.FloatField(blank=True, null=True)
     addressid = models.IntegerField(blank=True, null=True)
     intersectionid = models.IntegerField(blank=True, null=True)
-    addressline1 = models.CharField(max_length=50, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    addressline2 = models.CharField(max_length=50, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    city = models.CharField(max_length=25, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    citystatezip = models.CharField(max_length=50, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    stateprovince = models.CharField(max_length=50, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    postalcode = models.CharField(max_length=15, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    zipplus4 = models.CharField(db_column='zipPlus4', max_length=15, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)  # Field name made lowercase.
-    addressnumberprefix = models.CharField(max_length=10, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
+    addressline1 = models.CharField(max_length=50, blank=True, null=True)
+    addressline2 = models.CharField(max_length=50, blank=True, null=True)
+    city = models.CharField(max_length=25, blank=True, null=True)
+    citystatezip = models.CharField(max_length=50, blank=True, null=True)
+    stateprovince = models.CharField(max_length=50, blank=True, null=True)
+    postalcode = models.CharField(max_length=15, blank=True, null=True)
+    zipplus4 = models.CharField(db_column='zipPlus4', max_length=15, blank=True, null=True)  # Field name made lowercase.
+    addressnumberprefix = models.CharField(max_length=10, blank=True, null=True)
     addressnumber = models.IntegerField(blank=True, null=True)
-    addressnumbersuffix = models.CharField(max_length=10, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    streetnamepremodifier = models.CharField(max_length=10, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    streetnamepredirectional = models.CharField(max_length=10, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    streetnamepretype = models.CharField(max_length=10, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    streetname = models.CharField(max_length=50, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    streetnameposttype = models.CharField(max_length=10, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    streetnamepostdirectional = models.CharField(max_length=10, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    streetnamepostmodifier = models.CharField(max_length=10, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    unittype = models.CharField(max_length=10, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    unitidentifier = models.CharField(max_length=10, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    buildingidentifier = models.CharField(max_length=10, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    buildingtype = models.CharField(max_length=10, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    compositeunitidentifier = models.CharField(max_length=10, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    compositeunittype = models.CharField(max_length=10, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    postalplacename = models.CharField(max_length=50, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    country = models.CharField(max_length=50, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    countyname = models.CharField(max_length=50, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
+    addressnumbersuffix = models.CharField(max_length=10, blank=True, null=True)
+    streetnamepremodifier = models.CharField(max_length=10, blank=True, null=True)
+    streetnamepredirectional = models.CharField(max_length=10, blank=True, null=True)
+    streetnamepretype = models.CharField(max_length=10, blank=True, null=True)
+    streetname = models.CharField(max_length=50, blank=True, null=True)
+    streetnameposttype = models.CharField(max_length=10, blank=True, null=True)
+    streetnamepostdirectional = models.CharField(max_length=10, blank=True, null=True)
+    streetnamepostmodifier = models.CharField(max_length=10, blank=True, null=True)
+    unittype = models.CharField(max_length=10, blank=True, null=True)
+    unitidentifier = models.CharField(max_length=10, blank=True, null=True)
+    buildingidentifier = models.CharField(max_length=10, blank=True, null=True)
+    buildingtype = models.CharField(max_length=10, blank=True, null=True)
+    compositeunitidentifier = models.CharField(max_length=10, blank=True, null=True)
+    compositeunittype = models.CharField(max_length=10, blank=True, null=True)
+    postalplacename = models.CharField(max_length=50, blank=True, null=True)
+    country = models.CharField(max_length=50, blank=True, null=True)
+    countyname = models.CharField(max_length=50, blank=True, null=True)
     longitude = models.FloatField(blank=True, null=True)
     latitude = models.FloatField(blank=True, null=True)
-    postaldeliveryline = models.CharField(max_length=100, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    postallastline = models.CharField(max_length=50, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    postaldeliverable = models.CharField(max_length=10, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    postaldeliverynotes = models.CharField(max_length=10, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    source = models.CharField(max_length=10, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    type = models.CharField(max_length=10, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
+    postaldeliveryline = models.CharField(max_length=100, blank=True, null=True)
+    postallastline = models.CharField(max_length=50, blank=True, null=True)
+    postaldeliverable = models.CharField(max_length=10, blank=True, null=True)
+    postaldeliverynotes = models.CharField(max_length=10, blank=True, null=True)
+    source = models.CharField(max_length=10, blank=True, null=True)
+    type = models.CharField(max_length=10, blank=True, null=True)
     score = models.DecimalField(max_digits=18, decimal_places=0, blank=True, null=True)
     parsed = models.BooleanField(blank=True, null=True)
-    parsedremainder = models.CharField(max_length=10, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
+    parsedremainder = models.CharField(max_length=10, blank=True, null=True)
     easting = models.FloatField(blank=True, null=True)
     northing = models.FloatField(blank=True, null=True)
-    coordinatesystem = models.CharField(max_length=50, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    datum = models.CharField(max_length=50, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    comments = models.CharField(max_length=50, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    displayline1 = models.CharField(max_length=80, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    displayline2 = models.CharField(max_length=50, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    displaycitystatezip = models.CharField(max_length=50, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
+    coordinatesystem = models.CharField(max_length=50, blank=True, null=True)
+    datum = models.CharField(max_length=50, blank=True, null=True)
+    comments = models.CharField(max_length=50, blank=True, null=True)
+    displayline1 = models.CharField(max_length=80, blank=True, null=True)
+    displayline2 = models.CharField(max_length=50, blank=True, null=True)
+    displaycitystatezip = models.CharField(max_length=50, blank=True, null=True)
     lasteditdate = models.DateTimeField(blank=True, null=True)
     lasteditby = models.IntegerField(blank=True, null=True)
     creationdate = models.DateTimeField(blank=True, null=True)
     createdby = models.IntegerField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'facility_locations'
 
 class Facility(models.Model):
     facility_id = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     location = models.ForeignKey(FacilityLocation, models.DO_NOTHING)
-    name = models.CharField(max_length=50, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
+    name = models.CharField(max_length=50, blank=True, null=True)
     activity_status = models.BooleanField(blank=True, null=True)
     active_date = models.DateTimeField(blank=True, null=True)
     deactive_date = models.DateTimeField(blank=True, null=True)
     master_facility_id = models.IntegerField(blank=True, null=True)
     master = models.BooleanField(blank=True, null=True)
     checked = models.BooleanField(blank=True, null=True)
-    temp_notes = models.CharField(max_length=255, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
+    temp_notes = models.CharField(max_length=255, blank=True, null=True)
     temp_loc = models.IntegerField(blank=True, null=True)
-    temp_name = models.CharField(max_length=50, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
+    temp_name = models.CharField(max_length=50, blank=True, null=True)
     last_edit_date = models.DateTimeField(blank=True, null=True)
     last_edit_by = models.IntegerField(blank=True, null=True)
     creation_date = models.DateTimeField(blank=True, null=True)
     created_by = models.IntegerField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'facilities'
+        verbose_name_plural = "facilities"
     def __str__(self):        return f"{self.name} ({self.location})"
 
 class ProgramDistricts(models.Model):
     program_district_id = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     program = models.ForeignKey('financials.Program', models.DO_NOTHING, db_column='program_id', related_name='program_districts')
     district = models.SmallIntegerField()
-    description = models.CharField(max_length=50, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
+    description = models.CharField(max_length=50, blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'program_districts'
     def __str__(self):        return f"{self.program} - District {self.district} ({self.description})"
 
@@ -260,25 +261,262 @@ class ProgramFacility(models.Model):
     program_facility_id = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     program_facility_type = models.ForeignKey(ProgramFacilityType, models.DO_NOTHING)
     facility = models.ForeignKey(Facility, models.DO_NOTHING)
-    profile = models.CharField(max_length=4000, db_collation='SQL_Latin1_General_CP1_CI_AS')
+    profile = models.CharField(max_length=4000)
     program_district = models.ForeignKey(ProgramDistricts, models.DO_NOTHING)
-    tracking_id = models.CharField(max_length=20, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    risk_assessment = models.CharField(max_length=5, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
+    tracking_id = models.CharField(max_length=20, blank=True, null=True)
+    risk_assessment_level = models.ForeignKey(
+        'RiskAssessmentLevel', models.SET_NULL,
+        null=True, blank=True,
+        db_column='risk_assessment_levels_id',
+        related_name='program_facilities',
+    )
     start_date = models.DateTimeField(blank=True, null=True)
-    activity_flag = models.CharField(max_length=1, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    license_number = models.CharField(max_length=15, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
+    activity_flag = models.CharField(max_length=1, blank=True, null=True)
+    license_number = models.CharField(max_length=15, blank=True, null=True)
     license_expire_date = models.DateTimeField(blank=True, null=True)
     last_visit_date = models.DateTimeField(blank=True, null=True)
     next_visit_date = models.DateTimeField(blank=True, null=True)
-    facility_phone = models.CharField(max_length=15, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
+    facility_phone = models.CharField(max_length=15, blank=True, null=True)
     activity_change_date = models.DateTimeField(blank=True, null=True)
-    comments = models.CharField(max_length=255, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    visit_month_seed = models.SmallIntegerField(blank=True, null=True)
+    comments = models.CharField(max_length=255, blank=True, null=True)
+    visit_month_seed = models.SmallIntegerField(
+        blank=True, null=True,
+        help_text="Preferred month for facility visits (1-12, where 1=January, 12=December). If set, next_visit_date aligns to this month. Combined with risk_assessment_level.visit_frequency_days to schedule visits."
+    )
+    season_start = models.CharField(
+        max_length=5, blank=True, null=True,
+        help_text="Facility season start date as 'MM-DD' (e.g., '05-01' for May 1st). If set, activity_flag auto-adjusts based on season."
+    )
+    season_end = models.CharField(
+        max_length=5, blank=True, null=True,
+        help_text="Facility season end date as 'MM-DD' (e.g., '09-30' for Sept 30th). If set, activity_flag auto-adjusts based on season."
+    )
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'program_facilities'
-    def __str__(self):        return f"{self.facility} in {self.program_facility_type} ({self.program_district})"
+        verbose_name_plural = "program facilities"
+
+    def __str__(self):
+        return f"{self.facility} in {self.program_facility_type} ({self.program_district})"
+
+    def is_in_season(self):
+        """Check if facility is currently in its active season.
+
+        Returns True if season_start and season_end are set and current date is within range.
+        Handles season ranges that span year boundaries (e.g., Nov 1 - Feb 28).
+        """
+        if not self.season_start or not self.season_end:
+            return True  # No season defined = always in season
+
+        try:
+            today = timezone.now().date()
+            start_month, start_day = map(int, self.season_start.split('-'))
+            end_month, end_day = map(int, self.season_end.split('-'))
+
+            # Create date objects for this year
+            start_date = today.replace(month=start_month, day=start_day)
+            end_date = today.replace(month=end_month, day=end_day)
+
+            # Handle season that spans year boundary (e.g., Nov 1 - Feb 28)
+            if start_date <= end_date:
+                # Normal case: season within same year
+                return start_date <= today <= end_date
+            else:
+                # Season spans year boundary
+                return today >= start_date or today <= end_date
+        except (ValueError, AttributeError):
+            return True  # Invalid season format = always in season
+
+    def get_activity_flag_for_season(self):
+        """Determine what activity_flag should be based on season.
+
+        Returns:
+        - 'I' if out of season and facility is not closed
+        - 'A' if in season and facility is not closed
+        - Current activity_flag if it's 'C' (closed)
+        """
+        if self.activity_flag == 'C':
+            return self.activity_flag  # Don't override closed status
+
+        if self.is_in_season():
+            return 'A'  # Active
+        else:
+            return 'I'  # Inactive
+
+    def get_effective_last_visit_date(self):
+        """Get the effective last visit date from the latest checklist run.
+
+        Returns the started_at of the most recent checklist_run for this facility's
+        workflow instances. Falls back to self.last_visit_date if no checklist runs exist.
+
+        Returns None if neither source has a date.
+        """
+        try:
+            from apps.checklists.models import ChecklistRun
+
+            # Find the latest checklist run started_at for this facility's instances
+            latest_checklist_run = (
+                ChecklistRun.objects
+                .filter(instance__program_facility=self)
+                .filter(started_at__isnull=False)
+                .order_by('-started_at')
+                .first()
+            )
+
+            if latest_checklist_run and latest_checklist_run.started_at:
+                return latest_checklist_run.started_at
+        except Exception:
+            # If query fails (e.g., app not loaded yet), silently fall back
+            pass
+
+        # Fall back to manually set last_visit_date
+        return self.last_visit_date
+
+    def calculate_next_visit_date(self):
+        """Calculate next_visit_date based on latest checklist run, risk frequency, and visit_month_seed.
+
+        Returns the calculated next visit date, or None if calculation is not possible.
+
+        Calculation logic:
+        - Effective last_visit_date = latest checklist_run.started_at (or self.last_visit_date if no runs)
+        - If no effective last_visit_date: returns None (no baseline to calculate from)
+        - If no risk_assessment_level: returns None (no frequency defined)
+        - If risk_assessment_level has no visit_frequency_days: returns None
+        - Base calculation: effective_last_visit_date + visit_frequency_days
+        - If visit_month_seed is set: adjust date to align with that month
+          * If adjusted date is in past, move to next year's occurrence of that month
+
+        Example:
+        - Latest checklist started: 2026-06-22, frequency: 90 days, visit_month_seed: None
+          → next_visit_date: 2026-09-20
+        - Latest checklist started: 2026-06-22, frequency: 90 days, visit_month_seed: 6 (June)
+          → next_visit_date: 2027-06-22 (same day in June next year)
+        - Latest checklist started: 2026-06-22, frequency: 90 days, visit_month_seed: 9 (September)
+          → next_visit_date: 2026-09-22 (same day in September)
+        """
+        try:
+            # Get effective last visit date from latest checklist run or fall back to last_visit_date field
+            effective_last_visit = self.get_effective_last_visit_date()
+
+            if not effective_last_visit or not self.risk_assessment_level:
+                return None
+
+            if not self.risk_assessment_level.visit_frequency_days:
+                return None
+
+            from datetime import timedelta
+
+            # Calculate base next visit date using frequency
+            base_next_date = effective_last_visit + timedelta(days=self.risk_assessment_level.visit_frequency_days)
+        except Exception:
+            # If calculation fails for any reason, return None safely
+            return None
+
+        # If no month seed preference, return the base calculation
+        if not self.visit_month_seed or self.visit_month_seed < 1 or self.visit_month_seed > 12:
+            return base_next_date
+
+        # Adjust to visit_month_seed: keep same day, align to preferred month
+        try:
+            # Try to keep the same day in the preferred month
+            adjusted_date = base_next_date.replace(month=self.visit_month_seed)
+
+            # If adjusted date is in the past, move to the next year
+            if adjusted_date < base_next_date:
+                adjusted_date = adjusted_date.replace(year=adjusted_date.year + 1)
+
+            return adjusted_date
+        except ValueError:
+            # Handle edge case: Feb 29 in non-leap year, etc.
+            # Fall back to last day of the preferred month
+            import calendar
+            last_day = calendar.monthrange(base_next_date.year, self.visit_month_seed)[1]
+            adjusted_date = base_next_date.replace(month=self.visit_month_seed, day=last_day)
+
+            if adjusted_date < base_next_date:
+                adjusted_date = adjusted_date.replace(year=adjusted_date.year + 1)
+
+            return adjusted_date
+
+    def update_next_visit_date(self):
+        """Recalculate and save next_visit_date based on current last_visit_date and risk level.
+
+        Returns True if next_visit_date was updated, False otherwise.
+        """
+        calculated_date = self.calculate_next_visit_date()
+        if calculated_date != self.next_visit_date:
+            self.next_visit_date = calculated_date
+            return True
+        return False
+
+
+class StepTypeRole(models.Model):
+    """Lookup table mapping workflow step types to the role responsible for acting
+    on them.  responsible_role=None means the step is automated — no human task
+    is created and the engine auto-advances using the 'Auto' trigger event.
+    """
+    step_type        = models.CharField(max_length=50, primary_key=True)
+    label            = models.CharField(max_length=100)
+    responsible_role = models.CharField(
+        max_length=30, null=True, blank=True,
+        help_text="UserProfile.role that handles this step. Leave blank for automated steps.",
+    )
+    description      = models.TextField(null=True, blank=True)
+
+    class Meta:
+        db_table            = "workflow_step_type_roles"
+        ordering            = ["step_type"]
+        verbose_name        = "step type role"
+        verbose_name_plural = "step type roles"
+
+    def __str__(self):
+        role = self.responsible_role or "automated"
+        return f"{self.step_type} → {role}"
+
+
+class ActivityFlag(models.Model):
+    """Lookup table for program_facilities.activity_flag (A/I/C)."""
+    code        = models.CharField(max_length=1, primary_key=True)
+    label       = models.CharField(max_length=50)
+    description = models.TextField(blank=True, null=True)
+
+    class Meta:
+        db_table            = "activity_flags"
+        ordering            = ["code"]
+        verbose_name        = "activity flag"
+        verbose_name_plural = "activity flags"
+
+    def __str__(self):
+        return f"{self.code} — {self.label}"
+
+
+class RiskAssessmentLevel(models.Model):
+    """Visit-frequency lookup keyed by (code, program_facility_type).
+
+    `program_facilities.risk_assessment` stores the code; join on both
+    code + program_facility_type_id to resolve label and visit frequency.
+    """
+    code                  = models.CharField(max_length=5)
+    program_facility_type = models.ForeignKey(
+        ProgramFacilityType, models.CASCADE,
+        related_name="risk_assessment_levels",
+    )
+    label                 = models.CharField(max_length=50)
+    visit_frequency_days  = models.PositiveIntegerField(
+        help_text="Target days between visits for this risk level.",
+    )
+    description           = models.TextField(blank=True, null=True)
+
+    class Meta:
+        db_table             = "risk_assessment_levels"
+        unique_together      = [("code", "program_facility_type")]
+        ordering             = ["program_facility_type", "visit_frequency_days"]
+        verbose_name         = "risk assessment level"
+        verbose_name_plural  = "risk assessment levels"
+
+    def __str__(self):
+        return f"{self.code} — {self.label} ({self.visit_frequency_days}d)"
 
 
 class UserProgram(models.Model):
@@ -287,7 +525,7 @@ class UserProgram(models.Model):
     program    = models.ForeignKey('financials.Program', models.CASCADE, db_column='program_id', related_name='user_programs')
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'user_programs'
 
     def __str__(self):
@@ -301,7 +539,7 @@ class UserProgramDistrict(models.Model):
     assigned_date    = models.DateTimeField(default=timezone.now)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'user_program_districts'
 
     def __str__(self):

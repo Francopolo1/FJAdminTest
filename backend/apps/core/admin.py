@@ -3,9 +3,10 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import (
     AuthUser, AuditLog, UserProfile, UserRole,
+    ActivityFlag, StepTypeRole,
     FacilityType, Specialtracking, ProgramFacilityType, ProgramFacilityTypeActivity,
     FacilityLocation, Facility, ProgramDistricts, ProgramFacility,
-    UserProgram, UserProgramDistrict,
+    RiskAssessmentLevel, UserProgram, UserProgramDistrict,
 )
 from apps.financials.models import Org
 from apps.workflows.models import WorkflowDefinition
@@ -67,6 +68,18 @@ class AuthUserAdmin(UserAdmin):
         return getattr(getattr(obj, "profile", None), "get_role_display", lambda: "—")()
     role.short_description = "Role"
     role.admin_order_field = "profile__role"
+
+
+@admin.register(StepTypeRole)
+class StepTypeRoleAdmin(admin.ModelAdmin):
+    list_display = ["step_type", "label", "responsible_role", "description"]
+    ordering     = ["step_type"]
+
+
+@admin.register(ActivityFlag)
+class ActivityFlagAdmin(admin.ModelAdmin):
+    list_display = ["code", "label", "description"]
+    ordering     = ["code"]
 
 
 @admin.register(UserRole)
@@ -141,13 +154,28 @@ class ProgramFacilityTypeActivityInline(admin.TabularInline):
     show_change_link = True
 
 
+class RiskAssessmentLevelInline(admin.TabularInline):
+    model  = RiskAssessmentLevel
+    extra  = 0
+    fields = ["code", "label", "visit_frequency_days", "description"]
+    ordering = ["visit_frequency_days"]
+
+
 @admin.register(ProgramFacilityType)
 class ProgramFacilityTypeAdmin(admin.ModelAdmin):
     list_display  = ["program", "facility_type", "description"]
     list_filter   = ["program", "facility_type"]
     search_fields = ["description", "program__code", "facility_type__code"]
     autocomplete_fields = ["program", "facility_type"]
-    inlines       = [ProgramFacilityTypeActivityInline]
+    inlines       = [RiskAssessmentLevelInline, ProgramFacilityTypeActivityInline]
+
+
+@admin.register(RiskAssessmentLevel)
+class RiskAssessmentLevelAdmin(admin.ModelAdmin):
+    list_display   = ["code", "label", "program_facility_type", "visit_frequency_days"]
+    list_filter    = ["program_facility_type"]
+    search_fields  = ["code", "label", "program_facility_type__description"]
+    ordering       = ["program_facility_type", "visit_frequency_days"]
 
 
 @admin.register(FacilityLocation)
@@ -171,7 +199,6 @@ class FacilityAdmin(admin.ModelAdmin):
     search_fields = ["name"]
     autocomplete_fields = ["location"]
 
-
 @admin.register(ProgramDistricts)
 class ProgramDistrictsAdmin(admin.ModelAdmin):
     list_display  = ["program", "district", "description"]
@@ -188,12 +215,16 @@ class ProgramFacilityAdmin(admin.ModelAdmin):
     list_filter   = ["program_facility_type", "program_district", "activity_flag"]
     search_fields = ["facility__name", "license_number", "tracking_id"]
     autocomplete_fields = ["facility", "program_facility_type", "program_district"]
+    actions = ["recalculate_next_visit_dates"]
     fieldsets = (
         (None, {"fields": ("facility", "program_facility_type", "program_district", "profile")}),
         ("Licensing", {"fields": (
             "license_number", "license_expire_date", "tracking_id",
-            "risk_assessment", "activity_flag",
+            "risk_assessment_level", "activity_flag",
         )}),
+        ("Seasonality", {"fields": (
+            "season_start", "season_end",
+        ), "description": "If both season_start and season_end are set, activity_flag will auto-adjust based on current date (A=active, I=inactive). Format: MM-DD (e.g., 05-01 for May 1st)."}),
         ("Visits", {"fields": (
             "start_date", "last_visit_date", "next_visit_date",
             "visit_month_seed", "activity_change_date",
@@ -201,6 +232,20 @@ class ProgramFacilityAdmin(admin.ModelAdmin):
         ("Contact / Notes", {"fields": ("facility_phone", "comments")}),
     )
 
+    def recalculate_next_visit_dates(self, request, queryset):
+        """Admin action: Recalculate next_visit_date for selected facilities."""
+        updated_count = 0
+        for facility in queryset:
+            if facility.update_next_visit_date():
+                facility.save()
+                updated_count += 1
+
+        self.message_user(
+            request,
+            f"Recalculated next_visit_date for {updated_count} facility(ies).",
+        )
+
+    recalculate_next_visit_dates.short_description = "Recalculate next_visit_date based on risk level frequency"
 
 # ── User program assignments ────────────────────────────────────────────────
 

@@ -18,6 +18,7 @@ import { CompliancePage } from "./pages/CompliancePage";
 import { FinancialsPage } from "./pages/FinancialsPage";
 import { FacilitiesPage } from "./pages/FacilitiesPage";
 import { FacilityDirectoryDetailPage } from "./pages/FacilityDirectoryDetailPage";
+import { NewFacilityPage } from "./pages/NewFacilityPage";
 
 function App() {
   return (
@@ -120,6 +121,14 @@ function App() {
           element={
             <ProtectedRoute>
               <FacilitiesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/facilities/new"
+          element={
+            <ProtectedRoute>
+              <NewFacilityPage />
             </ProtectedRoute>
           }
         />

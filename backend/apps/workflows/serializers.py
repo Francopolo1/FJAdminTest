@@ -39,11 +39,18 @@ class WorkflowTaskSerializer(serializers.ModelSerializer):
     assigned_to_name = serializers.CharField(source="assigned_to.full_name", read_only=True)
     step_name        = serializers.CharField(source="step.step_name",         read_only=True)
     hours_remaining  = serializers.SerializerMethodField()
+    program_title    = serializers.CharField(
+        source="instance.program_facility.program_facility_type.program.title", read_only=True, default=None,
+    )
+    activity         = serializers.CharField(
+        source="instance.workflow.program_facility_type_activity.description", read_only=True, default=None,
+    )
 
     class Meta:
         model  = WorkflowTask
         fields = ["task_id","instance","step","step_name","assigned_to","assigned_to_name",
-                  "assigned_by","status","comments","assigned_at","due_date","completed_at","hours_remaining"]
+                  "assigned_by","status","comments","assigned_at","due_date","completed_at","hours_remaining",
+                  "program_title","activity"]
 
     def get_hours_remaining(self, obj):
         from django.utils import timezone
@@ -69,10 +76,17 @@ class WorkflowInstanceListSerializer(serializers.ModelSerializer):
     workflow_name     = serializers.CharField(source="workflow.name",          read_only=True)
     initiated_by_name = serializers.CharField(source="initiated_by.full_name", read_only=True)
     current_step_name = serializers.CharField(source="current_step.step_name", read_only=True, default=None)
+    program_title     = serializers.CharField(
+        source="program_facility.program_facility_type.program.title", read_only=True, default=None,
+    )
+    activity          = serializers.CharField(
+        source="workflow.program_facility_type_activity.description", read_only=True, default=None,
+    )
     class Meta:
         model  = WorkflowInstance
         fields = ["instance_id","reference_no","workflow_name","initiated_by_name",
-                  "current_step_name","status","priority","started_at","due_date"]
+                  "current_step_name","status","priority","started_at","due_date",
+                  "program_title","activity"]
 
 
 class WorkflowAuditLogSerializer(serializers.ModelSerializer):

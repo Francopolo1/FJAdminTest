@@ -289,7 +289,7 @@ export function FacilityDetailPage() {
             </span>
             {assignment.risk_assessment && (
               <span className={`badge ${RISK_BADGE[assignment.risk_assessment] ?? "badge-gray"}`}>
-                {assignment.risk_assessment}
+                {assignment.risk_assessment_label ?? assignment.risk_assessment}
               </span>
             )}
           </div>
@@ -302,6 +302,12 @@ export function FacilityDetailPage() {
               <div>
                 <div className="detail-field-label">License #</div>
                 <div className="detail-field-value">{assignment.license_number ?? "—"}</div>
+              </div>
+              <div>
+                <div className="detail-field-label">Visit Frequency</div>
+                <div className="detail-field-value">
+                  {assignment.visit_frequency_days != null ? `Every ${assignment.visit_frequency_days} days` : "—"}
+                </div>
               </div>
               <div>
                 <div className="detail-field-label">Last Visit</div>

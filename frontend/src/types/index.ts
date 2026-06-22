@@ -44,10 +44,15 @@ export interface InspectorProgramFacility {
   district: number | null;
   facility_type: string | null;
   license_number: string | null;
+  risk_assessment_level_id: number | null;
   risk_assessment: string | null;
+  risk_assessment_label: string | null;
+  visit_frequency_days: number | null;
   activity_flag: string | null;
+  activity_flag_label: string | null;
   last_visit_date: string | null;
   next_visit_date: string | null;
+
 }
 
 export interface InspectorLanding {
@@ -104,8 +109,12 @@ export interface InspectorFacilityAssignment {
   facility_type: string | null;
   profile: string | null;
   license_number: string | null;
+  risk_assessment_level_id: number | null;
   risk_assessment: string | null;
+  risk_assessment_label: string | null;
+  visit_frequency_days: number | null;
   activity_flag: string | null;
+  activity_flag_label: string | null;
   last_visit_date: string | null;
   next_visit_date: string | null;
   instances: WorkflowInstanceSummary[];
@@ -145,6 +154,7 @@ export interface FacilityListItem {
   state: string | null;
   license_number: string | null;
   activity_flag: string | null;
+  activity_flag_label: string | null;
 }
 
 export interface FacilityProgramOption {
@@ -171,8 +181,12 @@ export interface FacilityAssignmentSummary {
   facility_type: string | null;
   profile: string | null;
   license_number: string | null;
+  risk_assessment_level_id: number | null;
   risk_assessment: string | null;
+  risk_assessment_label: string | null;
+  visit_frequency_days: number | null;
   activity_flag: string | null;
+  activity_flag_label: string | null;
   last_visit_date: string | null;
   next_visit_date: string | null;
   instances: WorkflowInstanceSummary[];
@@ -231,6 +245,8 @@ export interface WorkflowTask {
   due_date: string | null;
   completed_at: string | null;
   hours_remaining: number | null;
+  program_title?: string | null;
+  activity?: string | null;
 }
 
 export interface WorkflowInstance {
@@ -248,6 +264,8 @@ export interface WorkflowInstance {
   completed_at: string | null;
   due_date: string | null;
   program_facility: string | null;
+  program_title?: string | null;
+  activity?: string | null;
 }
 
 export interface WorkflowInstanceDetail extends WorkflowInstance {
@@ -277,6 +295,40 @@ export interface AvailableTransition {
 export interface StatusDistribution {
   status: string;
   count: number;
+}
+
+export interface ProgramDistributionItem {
+  program_code: string | null;
+  program_title: string | null;
+  count: number;
+}
+
+export interface ActivityDistributionItem {
+  activity: string | null;
+  count: number;
+}
+
+export interface StatusDistributionItem {
+  status: string;
+  count: number;
+}
+
+export interface PriorityDistributionItem {
+  priority: number;
+  count: number;
+}
+
+export interface CategoryDistributionItem {
+  category: string;
+  count: number;
+}
+
+export interface InstanceDistributions {
+  by_program: ProgramDistributionItem[];
+  by_activity: ActivityDistributionItem[];
+  by_status?: StatusDistributionItem[];
+  by_priority?: PriorityDistributionItem[];
+  by_category?: CategoryDistributionItem[];
 }
 
 export interface DashboardStats {
@@ -314,6 +366,9 @@ export interface ChecklistRunListItem {
   started_at: string | null;
   completed_at: string | null;
   created_at: string;
+  program_title?: string | null;
+  activity?: string | null;
+  facility_name?: string | null;
 }
 
 export interface ChecklistResponseItem {
@@ -334,6 +389,12 @@ export interface ChecklistResponseItem {
 export interface ChecklistRunDetail extends ChecklistRunListItem {
   template_description: string | null;
   is_blocking: boolean;
+  facility_address: string | null;
+  facility_city_state_zip: string | null;
+  facility_phone: string | null;
+  license_number: string | null;
+  license_expire_date: string | null;
+  tracking_id: string | null;
   responses: ChecklistResponseItem[];
 }
 
@@ -351,7 +412,9 @@ export interface ChecklistProgressItem {
   category: string | null;
   is_required: boolean;
   options: string[] | null;
+  default_value: string | null;
   example_url: string | null;
+  example_file_url: string | null;
   answered: boolean;
   response_id: string | null;
   response_value: string | null;
@@ -445,4 +508,82 @@ export interface FinancialsSummary {
   top_accounts: { account__code: string; account__title: string; account__account_type: string; count: number; total: string }[];
   active_foapal_strings: number;
   total_splits: number;
+}
+
+// ── Facility creation ───────────────────────────────────────────────────
+
+export interface AddressValidationResult {
+  valid: boolean;
+  error?: string;
+  latitude?: number;
+  longitude?: number;
+  display_address?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  county?: string;
+}
+
+export interface ProgramFacilityTypeOption {
+  program_facility_type_id: string;
+  program_id: string;
+  program_code: string;
+  program_title: string;
+  facility_type_id: string;
+  facility_type_code: string;
+  facility_type_description: string | null;
+  description: string | null;
+  profile_template: string;
+}
+
+export interface ProgramDistrictOption {
+  program_district_id: string;
+  program_id: string;
+  program_code: string;
+  district: number;
+  description: string | null;
+}
+
+export interface FacilityCreatePayload {
+  facility_name: string;
+  address_line1: string;
+  address_line2?: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  latitude?: number;
+  longitude?: number;
+  county?: string;
+  program_facility_type_id: string;
+  program_district_id: string;
+  license_number?: string;
+  license_expire_date?: string;
+  facility_phone?: string;
+  tracking_id?: string;
+  risk_assessment_levels_id?: number;
+  start_date?: string;
+  activity_flag?: string;
+  comments?: string;
+}
+
+export interface FacilityCreateResult {
+  facility_id: string;
+  program_facility_id: string;
+  facility_name: string;
+  address: string;
+}
+
+export interface ActivityFlagOption {
+  code: string;
+  label: string;
+  description: string | null;
+}
+
+export interface RiskAssessmentLevelOption {
+  id: number;
+  code: string;
+  label: string;
+  visit_frequency_days: number;
+  description: string | null;
+  program_facility_type_id: string;
 }

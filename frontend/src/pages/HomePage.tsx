@@ -4,6 +4,7 @@ import { AppLayout } from "../components/layout/AppLayout";
 import { StatCard } from "../components/ui/StatCard";
 import type { StatCardColor } from "../components/ui/StatCard";
 import { useAuth } from "../contexts/AuthContext";
+import { API_BASE_URL } from "../lib/api";
 import { InspectorLandingPage } from "./InspectorLandingPage";
 import {
   fetchInstanceCount,
@@ -342,19 +343,33 @@ function RoleHome({ role, name }: { role: UserRole; name: string }) {
           </div>
           <div className="card-body">
             <div className="charts-grid">
-              {shortcuts.map((shortcut) => (
-                <Link
-                  key={shortcut.to}
-                  to={shortcut.to}
-                  className="card"
-                  style={{ textDecoration: "none", color: "inherit" }}
-                >
-                  <div className="card-body">
-                    <div className="card-title" style={{ marginBottom: ".25rem" }}>{shortcut.label}</div>
-                    <div style={{ fontSize: ".875rem", color: "var(--ink-500)" }}>{shortcut.description}</div>
-                  </div>
-                </Link>
-              ))}
+              {shortcuts.map((shortcut) =>
+                shortcut.to === "/admin/" ? (
+                  <a
+                    key={shortcut.to}
+                    href={`${API_BASE_URL}/admin/`}
+                    className="card"
+                    style={{ textDecoration: "none", color: "inherit" }}
+                  >
+                    <div className="card-body">
+                      <div className="card-title" style={{ marginBottom: ".25rem" }}>{shortcut.label}</div>
+                      <div style={{ fontSize: ".875rem", color: "var(--ink-500)" }}>{shortcut.description}</div>
+                    </div>
+                  </a>
+                ) : (
+                  <Link
+                    key={shortcut.to}
+                    to={shortcut.to}
+                    className="card"
+                    style={{ textDecoration: "none", color: "inherit" }}
+                  >
+                    <div className="card-body">
+                      <div className="card-title" style={{ marginBottom: ".25rem" }}>{shortcut.label}</div>
+                      <div style={{ fontSize: ".875rem", color: "var(--ink-500)" }}>{shortcut.description}</div>
+                    </div>
+                  </Link>
+                )
+              )}
             </div>
           </div>
         </div>

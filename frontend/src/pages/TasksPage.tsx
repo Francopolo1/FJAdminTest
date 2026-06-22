@@ -30,6 +30,31 @@ const TASK_STATUS_BADGE: Record<string, string> = {
   Delegated: "badge-gray",
 };
 
+interface TaskGroup {
+  key: string;
+  programTitle: string;
+  activity: string;
+  tasks: WorkflowTask[];
+}
+
+function groupTasks(tasks: WorkflowTask[]): TaskGroup[] {
+  const groups = new Map<string, TaskGroup>();
+  for (const task of tasks) {
+    const programTitle = task.program_title || "Unassigned Program";
+    const activity = task.activity || "Unassigned Activity";
+    const key = `${programTitle}|${activity}`;
+    let group = groups.get(key);
+    if (!group) {
+      group = { key, programTitle, activity, tasks: [] };
+      groups.set(key, group);
+    }
+    group.tasks.push(task);
+  }
+  return [...groups.values()].sort((a, b) =>
+    a.programTitle.localeCompare(b.programTitle) || a.activity.localeCompare(b.activity),
+  );
+}
+
 export function TasksPage() {
   const [tasks, setTasks] = useState<WorkflowTask[]>([]);
   const [count, setCount] = useState(0);
@@ -98,46 +123,45 @@ export function TasksPage() {
         </div>
 
         <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Step</th>
-                <th>Status</th>
-                <th>Assigned To</th>
-                <th>Due</th>
-                <th>Hours Remaining</th>
-                <th>Request</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={6}>
-                    <div className="empty-state"><p>Loading…</p></div>
-                  </td>
-                </tr>
-              ) : tasks.length === 0 ? (
-                <tr>
-                  <td colSpan={6}>
-                    <div className="empty-state"><p>No tasks found.</p></div>
-                  </td>
-                </tr>
-              ) : (
-                tasks.map((task) => (
-                  <tr key={task.task_id}>
-                    <td>{task.step_name}</td>
-                    <td><span className={`badge ${TASK_STATUS_BADGE[task.status] ?? "badge-gray"}`}>{task.status}</span></td>
-                    <td>{task.assigned_to_name ?? "—"}</td>
-                    <td>{task.due_date ? dateTimeFormatter.format(new Date(task.due_date)) : "—"}</td>
-                    <td>{task.hours_remaining ?? "—"}</td>
-                    <td>
-                      <Link to={`/instances/${task.instance}`}>View Request</Link>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+          {isLoading ? (
+            <div className="empty-state"><p>Loading…</p></div>
+          ) : tasks.length === 0 ? (
+            <div className="empty-state"><p>No tasks found.</p></div>
+          ) : (
+            groupTasks(tasks).map((group) => (
+              <div key={group.key} style={{ marginBottom: "1.5rem" }}>
+                <h3 style={{ margin: "0 0 .5rem" }}>
+                  {group.programTitle} — {group.activity}
+                </h3>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Step</th>
+                      <th>Status</th>
+                      <th>Assigned To</th>
+                      <th>Due</th>
+                      <th>Hours Remaining</th>
+                      <th>Request</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {group.tasks.map((task) => (
+                      <tr key={task.task_id}>
+                        <td>{task.step_name}</td>
+                        <td><span className={`badge ${TASK_STATUS_BADGE[task.status] ?? "badge-gray"}`}>{task.status}</span></td>
+                        <td>{task.assigned_to_name ?? "—"}</td>
+                        <td>{task.due_date ? dateTimeFormatter.format(new Date(task.due_date)) : "—"}</td>
+                        <td>{task.hours_remaining ?? "—"}</td>
+                        <td>
+                          <Link to={`/instances/${task.instance}`}>View Request</Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))
+          )}
         </div>
 
         <Pagination page={page} pageSize={PAGE_SIZE} count={count} onPageChange={setPage} />

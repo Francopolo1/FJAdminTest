@@ -16,7 +16,7 @@ Pages
 
 import json
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, Q, Sum, DecimalField
 from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
@@ -187,6 +187,21 @@ class InstanceListView(View):
             v for v in all_qs.values_list("category", flat=True) if v
         ))
 
+        # Chart distributions (reflect active filters)
+        status_dist = [
+            {"label": s["status"], "count": s["count"],
+             "color": STATUS_COLORS.get(s["status"], "#9AA1AE")}
+            for s in qs.values("status").annotate(count=Count("instance_id")).order_by("status")
+        ]
+        priority_dist = [
+            {"label": PRIORITY_LABELS.get(p["priority"], f"P{p['priority']}"), "count": p["count"]}
+            for p in qs.values("priority").annotate(count=Count("instance_id")).order_by("priority")
+        ]
+        category_dist = list(
+            qs.exclude(category__isnull=True).exclude(category="")
+            .values("category").annotate(count=Count("instance_id")).order_by("-count")[:8]
+        )
+
         context = {
             "instances":   qs[:200],
             "total":       qs.count(),
@@ -198,6 +213,9 @@ class InstanceListView(View):
             "filter_search":   search,
             "priority_labels": PRIORITY_LABELS,
             "status_colors":   STATUS_COLORS,
+            "status_dist_json":   json.dumps(status_dist),
+            "priority_dist_json": json.dumps(priority_dist),
+            "category_dist":      category_dist,
         }
         return render(request, self.template_name, context)
 
@@ -220,22 +238,17 @@ class InstanceDetailView(View):
         # Audit log from workflow_audit_log table
         audit_logs = []
         try:
-            from django.db import connection
-            with connection.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT wal.action, wal.from_status, wal.to_status,
-                           wal.notes, wal.logged_at,
-                           au.first_name + ' ' + au.last_name AS actor_name
-                    FROM   dbo.workflow_audit_log wal
-                    JOIN   dbo.auth_user au ON au.id = wal.actor_id
-                    WHERE  wal.instance_id = %s
-                    ORDER  BY wal.logged_at DESC
-                    """,
-                    [str(instance_id)],
-                )
-                cols = [c[0] for c in cur.description]
-                audit_logs = [dict(zip(cols, row)) for row in cur.fetchall()]
+            from apps.workflows.models import WorkflowAuditLog
+            audit_logs = list(
+                WorkflowAuditLog.objects
+                .filter(instance_id=instance_id)
+                .select_related("actor")
+                .order_by("-logged_at")
+                .values("action", "from_status", "to_status", "notes", "logged_at",
+                        "actor__first_name", "actor__last_name")
+            )
+            for log in audit_logs:
+                log["actor_name"] = f"{log.pop('actor__first_name', '')} {log.pop('actor__last_name', '')}".strip()
         except Exception:
             pass
 
@@ -283,14 +296,31 @@ class TasksDashboardView(View):
             "in_progress":qs.filter(status="InProgress").count(),
         }
 
+        TASK_STATUS_COLORS = {
+            "Pending":    "#F59E0B",
+            "InProgress": "#2563EB",
+            "Overdue":    "#E11D48",
+        }
+        status_dist = [
+            {"label": s["status"], "count": s["count"],
+             "color": TASK_STATUS_COLORS.get(s["status"], "#9AA1AE")}
+            for s in qs.values("status").annotate(count=Count("task_id")).order_by("status")
+        ]
+        priority_dist = [
+            {"label": PRIORITY_LABELS.get(p["priority"], f"P{p['priority']}"), "count": p["count"]}
+            for p in qs.values("priority").annotate(count=Count("task_id")).order_by("priority")
+        ]
+
         context = {
-            "tasks":           qs[:300],
-            "stats":           stats,
-            "now":             now,
-            "priority_labels": PRIORITY_LABELS,
-            "filter_status":   status_filter,
-            "filter_search":   search,
-            "overdue_only":    overdue_only,
+            "tasks":              qs[:300],
+            "stats":              stats,
+            "now":                now,
+            "priority_labels":    PRIORITY_LABELS,
+            "filter_status":      status_filter,
+            "filter_search":      search,
+            "overdue_only":       overdue_only,
+            "status_dist_json":   json.dumps(status_dist),
+            "priority_dist_json": json.dumps(priority_dist),
         }
         return render(request, self.template_name, context)
 
@@ -329,12 +359,25 @@ class ChecklistsDashboardView(View):
                                     ).count(),
         }
 
+        CHECKLIST_STATUS_COLORS = {
+            "Completed":  "#10B981",
+            "InProgress": "#2563EB",
+            "NotStarted": "#ADB5BD",
+            "Skipped":    "#F59E0B",
+        }
+        status_dist = [
+            {"label": s["run_status"], "count": s["count"],
+             "color": CHECKLIST_STATUS_COLORS.get(s["run_status"], "#9AA1AE")}
+            for s in all_qs.values("run_status").annotate(count=Count("instance_id")).order_by("run_status")
+        ]
+
         context = {
-            "checklists":     qs[:300],
-            "stats":          stats,
-            "filter_status":  status_filter,
-            "filter_search":  search,
-            "blocking_only":  blocking_only,
+            "checklists":        qs[:300],
+            "stats":             stats,
+            "filter_status":     status_filter,
+            "filter_search":     search,
+            "blocking_only":     blocking_only,
+            "status_dist_json":  json.dumps(status_dist),
         }
         return render(request, self.template_name, context)
 
@@ -346,58 +389,46 @@ class ComplianceDashboardView(View):
     template_name = "dashboards/compliance.html"
 
     def get(self, request):
-        violations = []
-        rules      = []
-        stats      = {}
-        try:
-            from django.db import connection
-            with connection.cursor() as cur:
-                # Recent violations
-                cur.execute("""
-                    SELECT TOP 50
-                        cv.compliance_violation_id,
-                        cv.violation_date,
-                        cv.violation_description,
-                        vsl.name  AS severity,
-                        vsl.code  AS severity_code,
-                        cr2.code  AS rule_code,
-                        cr2.name  AS rule_name,
-                        ci.item_text
-                    FROM dbo.compliance_violations cv
-                    JOIN dbo.violationseveritylevels vsl
-                        ON vsl.violation_severity_level_id = cv.violation_severity_level_id
-                    JOIN dbo.checklist_item_compliance_rules cicr
-                        ON cicr.checklist_item_compliance_rule_id = cv.checklist_item_compliance_rule_id
-                    JOIN dbo.compliance_rules cr2
-                        ON cr2.compliance_rule_id = cicr.compliance_rule_id
-                    LEFT JOIN dbo.checklist_item ci
-                        ON ci.item_id = cicr.checklist_item_id
-                    ORDER BY cv.violation_date DESC
-                """)
-                cols       = [c[0] for c in cur.description]
-                violations = [dict(zip(cols, row)) for row in cur.fetchall()]
+        from apps.compliance.models import (
+            ComplianceViolation, ComplianceRule, ChecklistItemComplianceRule,
+        )
 
-                # Rule stats
-                cur.execute("""
-                    SELECT cr2.code, cr2.name, cr2.is_active, COUNT(cv.compliance_violation_id) AS violation_count
-                    FROM  dbo.compliance_rules cr2
-                    LEFT JOIN dbo.checklist_item_compliance_rules cicr
-                        ON cicr.compliance_rule_id = cr2.compliance_rule_id
-                    LEFT JOIN dbo.compliance_violations cv
-                        ON cv.checklist_item_compliance_rule_id = cicr.checklist_item_compliance_rule_id
-                    GROUP BY cr2.code, cr2.name, cr2.is_active
-                    ORDER BY violation_count DESC
-                """)
-                cols  = [c[0] for c in cur.description]
-                rules = [dict(zip(cols, row)) for row in cur.fetchall()]
+        violations_qs = (
+            ComplianceViolation.objects
+            .select_related(
+                "violation_severity_level",
+                "checklist_item_compliance_rule__compliance_rule",
+                "checklist_item_compliance_rule__checklist_item",
+            )
+            .order_by("-violation_date")[:50]
+        )
+        violations = [
+            {
+                "compliance_violation_id": v.compliance_violation_id,
+                "violation_date":          v.violation_date,
+                "violation_description":   v.violation_description,
+                "severity":                v.violation_severity_level.name,
+                "severity_code":           v.violation_severity_level.code,
+                "rule_code":               v.checklist_item_compliance_rule.compliance_rule.code,
+                "rule_name":               v.checklist_item_compliance_rule.compliance_rule.name,
+                "item_text":               getattr(v.checklist_item_compliance_rule.checklist_item, "item_text", None),
+            }
+            for v in violations_qs
+        ]
 
-                stats = {
-                    "total_violations": len(violations),
-                    "active_rules":     sum(1 for r in rules if r["is_active"]),
-                    "rules_with_violations": sum(1 for r in rules if r["violation_count"] > 0),
-                }
-        except Exception as e:
-            stats["error"] = str(e)
+        rules_qs = (
+            ComplianceRule.objects
+            .annotate(violation_count=Count("checklist_item_links__violations"))
+            .order_by("-violation_count")
+            .values("code", "name", "is_active", "violation_count")
+        )
+        rules = list(rules_qs)
+
+        stats = {
+            "total_violations":      ComplianceViolation.objects.count(),
+            "active_rules":          ComplianceRule.objects.filter(is_active=True).count(),
+            "rules_with_violations": sum(1 for r in rules if r["violation_count"] > 0),
+        }
 
         context = {
             "violations": violations,
@@ -414,76 +445,67 @@ class FinancialsDashboardView(View):
     template_name = "dashboards/financials.html"
 
     def get(self, request):
-        transactions = []
-        foapal_rows  = []
-        stats        = {}
-        try:
-            from django.db import connection
-            with connection.cursor() as cur:
-                # Transaction summary
-                cur.execute("""
-                    SELECT TOP 100
-                        t.id, t.transaction_date, t.reference_number,
-                        t.description, t.amount, t.currency, t.status,
-                        t.source_system, t.coded_by, t.approved_by,
-                        fs.foapal_code,
-                        f.title  AS fund_title,
-                        o.title  AS org_title,
-                        a.title  AS account_title
-                    FROM   dbo.transactions t
-                    LEFT JOIN dbo.foapal_strings fs ON fs.foapalstring_id = t.foapal_string_id
-                    LEFT JOIN dbo.funds          f  ON f.fund_id          = t.fund_id
-                    LEFT JOIN dbo.orgs           o  ON o.org_id           = t.org_id
-                    LEFT JOIN dbo.accounts       a  ON a.account_id       = t.account_id
-                    ORDER BY t.transaction_date DESC
-                """)
-                cols         = [c[0] for c in cur.description]
-                transactions = [dict(zip(cols, row)) for row in cur.fetchall()]
+        from apps.financials.models import Transaction, FoapalString
 
-                # Status breakdown
-                cur.execute("""
-                    SELECT status, COUNT(*) AS cnt, SUM(amount) AS total_amount
-                    FROM   dbo.transactions
-                    GROUP  BY status
-                """)
-                status_breakdown = [
-                    {"status": r[0], "count": r[1], "total": float(r[2] or 0)}
-                    for r in cur.fetchall()
-                ]
+        transactions_qs = (
+            Transaction.objects
+            .select_related("foapal_string", "foapal_string__fund", "foapal_string__org", "foapal_string__account")
+            .order_by("-transaction_date")[:100]
+        )
+        transactions = list(transactions_qs.values(
+            "id", "transaction_date", "reference_number", "description",
+            "amount", "currency", "status", "source_system", "coded_by", "approved_by",
+            "foapal_string__foapal_code",
+            "foapal_string__fund__title",
+            "foapal_string__org__title",
+            "foapal_string__account__title",
+        ))
+        for t in transactions:
+            t["foapal_code"]   = t.pop("foapal_string__foapal_code", None)
+            t["fund_title"]    = t.pop("foapal_string__fund__title", None)
+            t["org_title"]     = t.pop("foapal_string__org__title", None)
+            t["account_title"] = t.pop("foapal_string__account__title", None)
 
-                # FOAPAL usage
-                cur.execute("""
-                    SELECT TOP 20
-                        fs.foapal_code,
-                        f.code AS fund_code, o.code AS org_code,
-                        a.code AS acct_code, p.code AS prog_code,
-                        COUNT(t.id) AS tx_count,
-                        SUM(t.amount) AS total_amount
-                    FROM   dbo.foapal_strings fs
-                    LEFT JOIN dbo.transactions t ON t.foapal_string_id = fs.foapalstring_id
-                    LEFT JOIN dbo.funds    f ON f.fund_id    = fs.fund_id
-                    LEFT JOIN dbo.orgs     o ON o.org_id     = fs.org_id
-                    LEFT JOIN dbo.accounts a ON a.account_id = fs.account_id
-                    LEFT JOIN dbo.programs p ON p.program_id = fs.program_id
-                    GROUP BY fs.foapal_code, f.code, o.code, a.code, p.code
-                    ORDER BY tx_count DESC
-                """)
-                cols       = [c[0] for c in cur.description]
-                foapal_rows = [dict(zip(cols, row)) for row in cur.fetchall()]
+        status_breakdown = list(
+            Transaction.objects
+            .values("status")
+            .annotate(count=Count("id"), total_amount=Sum("amount"))
+            .order_by("status")
+        )
+        for row in status_breakdown:
+            row["total"] = float(row.pop("total_amount") or 0)
 
-                stats = {
-                    "total_transactions":    len(transactions),
-                    "status_breakdown":      status_breakdown,
-                    "pending_count":         sum(1 for t in transactions if t["status"] == "Pending"),
-                    "total_amount_pending":  sum(float(t["amount"]) for t in transactions if t["status"] == "Pending"),
-                }
-        except Exception as e:
-            stats["error"] = str(e)
+        foapal_rows = list(
+            FoapalString.objects
+            .annotate(tx_count=Count("transactions"), total_amount=Sum("transactions__amount"))
+            .select_related("fund", "org", "account", "program")
+            .order_by("-tx_count")[:20]
+            .values(
+                "foapal_code",
+                "fund__code", "org__code", "account__code", "program__code",
+                "tx_count", "total_amount",
+            )
+        )
+        for row in foapal_rows:
+            row["fund_code"]  = row.pop("fund__code", None)
+            row["org_code"]   = row.pop("org__code", None)
+            row["acct_code"]  = row.pop("account__code", None)
+            row["prog_code"]  = row.pop("program__code", None)
+            row["total_amount"] = float(row["total_amount"] or 0)
+
+        stats = {
+            "total_transactions":   Transaction.objects.count(),
+            "status_breakdown":     status_breakdown,
+            "pending_count":        Transaction.objects.filter(status="Pending").count(),
+            "total_amount_pending": float(
+                Transaction.objects.filter(status="Pending").aggregate(s=Sum("amount"))["s"] or 0
+            ),
+        }
 
         context = {
-            "transactions":  transactions[:50],
-            "foapal_rows":   foapal_rows,
-            "stats":         stats,
+            "transactions": transactions[:50],
+            "foapal_rows":  foapal_rows,
+            "stats":        stats,
         }
         return render(request, self.template_name, context)
 
@@ -499,41 +521,40 @@ class FacilitiesDashboardView(View):
         programs   = []
         stats      = {}
         try:
-            from django.db import connection
-            with connection.cursor() as cur:
-                # Facilities with location
-                cur.execute("""
-                    SELECT TOP 100
-                        f.facility_id, f.name,
-                        f.activity_status, f.active_date,
-                        fl.addressline1, fl.city, fl.stateprovince,
-                        fl.latitude, fl.longitude
-                    FROM  dbo.facilities f
-                    LEFT JOIN dbo.facility_locations fl ON fl.location_id = f.location_id
-                    ORDER BY f.name
-                """)
-                cols       = [c[0] for c in cur.description]
-                facilities = [dict(zip(cols, row)) for row in cur.fetchall()]
+            from apps.core.models import Facility
+            from apps.financials.models import Program
 
-                # Programs with facility counts
-                cur.execute("""
-                    SELECT p.code, p.title, p.is_active,
-                           COUNT(DISTINCT pf.program_facility_id) AS facility_count
-                    FROM   dbo.programs p
-                    LEFT JOIN dbo.program_facility_types pft ON pft.program_id = p.program_id
-                    LEFT JOIN dbo.program_facilities     pf  ON pf.program_facility_type_id = pft.program_facility_type_id
-                    GROUP BY p.code, p.title, p.is_active
-                    ORDER BY facility_count DESC
-                """)
-                cols     = [c[0] for c in cur.description]
-                programs = [dict(zip(cols, row)) for row in cur.fetchall()]
+            facilities = list(
+                Facility.objects
+                .select_related("location")
+                .order_by("name")[:100]
+                .values(
+                    "facility_id", "name", "activity_status", "active_date",
+                    "location__addressline1", "location__city", "location__stateprovince",
+                    "location__latitude", "location__longitude",
+                )
+            )
+            for f in facilities:
+                f["addressline1"]  = f.pop("location__addressline1", None)
+                f["city"]          = f.pop("location__city", None)
+                f["stateprovince"] = f.pop("location__stateprovince", None)
+                f["latitude"]      = f.pop("location__latitude", None)
+                f["longitude"]     = f.pop("location__longitude", None)
 
-                stats = {
-                    "total_facilities": len(facilities),
-                    "active_facilities": sum(1 for f in facilities if f["activity_status"]),
-                    "total_programs":   len(programs),
-                    "active_programs":  sum(1 for p in programs if p["is_active"]),
-                }
+            # Program → ProgramFacilityType (reverse) → ProgramFacility (reverse)
+            programs = list(
+                Program.objects
+                .annotate(facility_count=Count("programfacilitytype__programfacility", distinct=True))
+                .order_by("-facility_count")
+                .values("code", "title", "is_active", "facility_count")
+            )
+
+            stats = {
+                "total_facilities":  Facility.objects.count(),
+                "active_facilities": Facility.objects.filter(activity_status=True).count(),
+                "total_programs":    Program.objects.count(),
+                "active_programs":   Program.objects.filter(is_active=True).count(),
+            }
         except Exception as e:
             stats["error"] = str(e)
 
