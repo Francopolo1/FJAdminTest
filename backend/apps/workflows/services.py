@@ -216,6 +216,36 @@ def advance_instance(instance, actor, trigger_event, comments=None):
                         program_facility_id=pf.program_facility_id
                     ).update(next_visit_date=pf.next_visit_date)
 
+            elif next_step.step_type == "AssignInspector":
+                # Assign a task to the district inspector(s) for this facility,
+                # then auto-advance. Uses the same assignee logic as _create_step_tasks
+                # but targets the "inspector" role specifically.
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                program_district = instance.program_facility.program_district
+                inspectors = list(
+                    User.objects.filter(
+                        user_program_districts__program_district=program_district,
+                        profile__role="inspector",
+                    ).distinct()
+                )
+                if not inspectors:
+                    inspectors = [instance.initiated_by]
+                due_date = None
+                if next_step.sla_hours:
+                    due_date = timezone.now() + timezone.timedelta(hours=next_step.sla_hours)
+                for inspector in inspectors:
+                    WorkflowTask.objects.get_or_create(
+                        instance=instance,
+                        step=next_step,
+                        assigned_to=inspector,
+                        defaults={
+                            "assigned_by": actor,
+                            "due_date": due_date,
+                            "status": "Pending",
+                        },
+                    )
+
         WorkflowAuditLog.objects.create(
             instance=instance,
             actor=actor,
