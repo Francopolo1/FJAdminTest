@@ -442,6 +442,9 @@ def on_response_saved(sender, instance, **kwargs):
         is_required=True, item_id__in=answered_ids
     ).count()
 
+    # Save updated counters to database
+    run.save(update_fields=["answered_items", "answered_required"])
+
     run.mark_in_progress()
     run.try_auto_complete()
     
