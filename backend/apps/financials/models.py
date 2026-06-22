@@ -32,7 +32,7 @@ class Fund(models.Model):
 
     class Meta:
         db_table = "funds"
-        managed  = False
+        managed = True
         ordering = ["code"]
 
     def __str__(self):
@@ -59,7 +59,7 @@ class Org(models.Model):
 
     class Meta:
         db_table = "orgs"
-        managed  = False
+        managed = True
         ordering = ["code"]
 
     def __str__(self):
@@ -84,7 +84,7 @@ class Account(models.Model):
 
     class Meta:
         db_table = "accounts"
-        managed  = False
+        managed = True
         ordering = ["code"]
 
     def __str__(self):
@@ -92,9 +92,9 @@ class Account(models.Model):
 
 class Program(models.Model):
     program_id = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
-    code = models.CharField(unique=True, max_length=10, db_collation='SQL_Latin1_General_CP1_CI_AS')
-    title = models.CharField(max_length=120, db_collation='SQL_Latin1_General_CP1_CI_AS')
-    description = models.TextField(db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
+    code = models.CharField(unique=True, max_length=10)
+    title = models.CharField(max_length=120)
+    description = models.TextField(blank=True, null=True)
     is_active = models.BooleanField()
     effective_date = models.DateField(blank=True, null=True)
     expiry_date = models.DateField(blank=True, null=True)
@@ -102,7 +102,7 @@ class Program(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'programs'
 
     def __str__(self):
@@ -122,7 +122,7 @@ class Activity(models.Model):
 
     class Meta:
         db_table = "activities"
-        managed  = False
+        managed = True
         ordering = ["code"]
         verbose_name_plural = "activities"
     def __str__(self):
@@ -146,7 +146,7 @@ class Location(models.Model):
 
     class Meta:
         db_table = "locations"
-        managed  = False
+        managed = True
         ordering = ["code"]
 
     def __str__(self):
@@ -182,7 +182,7 @@ class FoapalString(models.Model):
 
     class Meta:
         db_table = "foapal_strings"
-        managed  = False
+        managed = True
         ordering = ["foapal_code"]
         unique_together = [["fund", "org", "account", "program", "activity", "location"]]
 
@@ -280,7 +280,7 @@ class Transaction(models.Model):
 
     class Meta:
         db_table = "transactions"
-        managed  = False
+        managed = True
         ordering = ["-transaction_date", "-created_at"]
 
     def __str__(self):
@@ -305,7 +305,7 @@ class TransactionSplit(models.Model):
 
     class Meta:
         db_table = "transaction_splits"
-        managed  = False
+        managed = True
         ordering = ["-created_at"]
 
     def __str__(self):
