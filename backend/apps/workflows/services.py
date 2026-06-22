@@ -183,6 +183,18 @@ def advance_instance(instance, actor, trigger_event, comments=None):
             comments=comments,
         )
 
+        # On finalization, close any remaining open tasks (e.g. supervisor approval
+        # tasks left pending when "Inspection Closed" bypasses the approval step)
+        if is_final:
+            WorkflowTask.objects.filter(
+                instance=instance,
+                status__in=["Pending", "InProgress"],
+            ).update(
+                status="Completed",
+                completed_at=timezone.now(),
+                comments="Auto-closed: instance finalized.",
+            )
+
         # Spin up checklists and task(s) for next step
         if not is_final:
             _create_checklist_runs(instance, next_step)
