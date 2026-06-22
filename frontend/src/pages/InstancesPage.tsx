@@ -140,6 +140,7 @@ export function InstancesPage() {
                   <thead>
                     <tr>
                       <th>Reference</th>
+                      <th>Facility</th>
                       <th>Workflow</th>
                       <th>Status</th>
                       <th>Current Step</th>
@@ -153,6 +154,11 @@ export function InstancesPage() {
                       <tr key={instance.instance_id}>
                         <td>
                           <Link to={`/instances/${instance.instance_id}`}>{instance.reference_no}</Link>
+                        </td>
+                        <td>
+                          {instance.facility_id && instance.facility_name
+                            ? <Link to={`/facilities/${instance.facility_id}`}>{instance.facility_name}</Link>
+                            : "—"}
                         </td>
                         <td>{instance.workflow_name}</td>
                         <td><StatusBadge status={instance.status} /></td>

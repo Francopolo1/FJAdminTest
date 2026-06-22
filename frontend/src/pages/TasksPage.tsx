@@ -137,6 +137,7 @@ export function TasksPage() {
                   <thead>
                     <tr>
                       <th>Step</th>
+                      <th>Facility</th>
                       <th>Status</th>
                       <th>Assigned To</th>
                       <th>Due</th>
@@ -148,6 +149,11 @@ export function TasksPage() {
                     {group.tasks.map((task) => (
                       <tr key={task.task_id}>
                         <td>{task.step_name}</td>
+                        <td>
+                          {task.facility_id && task.facility_name
+                            ? <Link to={`/facilities/${task.facility_id}`}>{task.facility_name}</Link>
+                            : "—"}
+                        </td>
                         <td><span className={`badge ${TASK_STATUS_BADGE[task.status] ?? "badge-gray"}`}>{task.status}</span></td>
                         <td>{task.assigned_to_name ?? "—"}</td>
                         <td>{task.due_date ? dateTimeFormatter.format(new Date(task.due_date)) : "—"}</td>
