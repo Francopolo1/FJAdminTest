@@ -247,6 +247,8 @@ export interface WorkflowTask {
   hours_remaining: number | null;
   program_title?: string | null;
   activity?: string | null;
+  facility_name?: string | null;
+  facility_id?: string | null;
 }
 
 export interface WorkflowInstance {
@@ -266,6 +268,8 @@ export interface WorkflowInstance {
   program_facility: string | null;
   program_title?: string | null;
   activity?: string | null;
+  facility_name?: string | null;
+  facility_id?: string | null;
 }
 
 export interface WorkflowInstanceDetail extends WorkflowInstance {

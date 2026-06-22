@@ -45,12 +45,18 @@ class WorkflowTaskSerializer(serializers.ModelSerializer):
     activity         = serializers.CharField(
         source="instance.workflow.program_facility_type_activity.description", read_only=True, default=None,
     )
+    facility_name    = serializers.CharField(
+        source="instance.program_facility.facility.name", read_only=True, default=None,
+    )
+    facility_id      = serializers.CharField(
+        source="instance.program_facility.facility.facility_id", read_only=True, default=None,
+    )
 
     class Meta:
         model  = WorkflowTask
         fields = ["task_id","instance","step","step_name","assigned_to","assigned_to_name",
                   "assigned_by","status","comments","assigned_at","due_date","completed_at","hours_remaining",
-                  "program_title","activity"]
+                  "program_title","activity","facility_name","facility_id"]
 
     def get_hours_remaining(self, obj):
         from django.utils import timezone
@@ -82,11 +88,17 @@ class WorkflowInstanceListSerializer(serializers.ModelSerializer):
     activity          = serializers.CharField(
         source="workflow.program_facility_type_activity.description", read_only=True, default=None,
     )
+    facility_name     = serializers.CharField(
+        source="program_facility.facility.name", read_only=True, default=None,
+    )
+    facility_id       = serializers.CharField(
+        source="program_facility.facility.facility_id", read_only=True, default=None,
+    )
     class Meta:
         model  = WorkflowInstance
         fields = ["instance_id","reference_no","workflow_name","initiated_by_name",
                   "current_step_name","status","priority","started_at","due_date",
-                  "program_title","activity"]
+                  "program_title","activity","facility_name","facility_id"]
 
 
 class WorkflowAuditLogSerializer(serializers.ModelSerializer):
