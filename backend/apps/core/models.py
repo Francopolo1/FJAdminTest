@@ -279,7 +279,10 @@ class ProgramFacility(models.Model):
     facility_phone = models.CharField(max_length=15, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
     activity_change_date = models.DateTimeField(blank=True, null=True)
     comments = models.CharField(max_length=255, db_collation='SQL_Latin1_General_CP1_CI_AS', blank=True, null=True)
-    visit_month_seed = models.SmallIntegerField(blank=True, null=True)
+    visit_month_seed = models.SmallIntegerField(
+        blank=True, null=True,
+        help_text="Preferred month for facility visits (1-12, where 1=January, 12=December). If set, next_visit_date aligns to this month. Combined with risk_assessment_level.visit_frequency_days to schedule visits."
+    )
     season_start = models.CharField(
         max_length=5, blank=True, null=True,
         help_text="Facility season start date as 'MM-DD' (e.g., '05-01' for May 1st). If set, activity_flag auto-adjusts based on season."
@@ -342,7 +345,7 @@ class ProgramFacility(models.Model):
             return 'I'  # Inactive
 
     def calculate_next_visit_date(self):
-        """Calculate next_visit_date based on last_visit_date and risk assessment frequency.
+        """Calculate next_visit_date based on last_visit_date, risk frequency, and visit_month_seed.
 
         Returns the calculated next visit date, or None if calculation is not possible.
 
@@ -350,7 +353,17 @@ class ProgramFacility(models.Model):
         - If no last_visit_date: returns None (no baseline to calculate from)
         - If no risk_assessment_level: returns None (no frequency defined)
         - If risk_assessment_level has no visit_frequency_days: returns None
-        - Otherwise: returns last_visit_date + visit_frequency_days
+        - Base calculation: last_visit_date + visit_frequency_days
+        - If visit_month_seed is set: adjust date to align with that month
+          * If adjusted date is in past, move to next year's occurrence of that month
+
+        Example:
+        - last_visit_date: 2026-06-22, frequency: 90 days, visit_month_seed: None
+          → next_visit_date: 2026-09-20
+        - last_visit_date: 2026-06-22, frequency: 90 days, visit_month_seed: 6 (June)
+          → next_visit_date: 2027-06-22 (same day in June next year)
+        - last_visit_date: 2026-06-22, frequency: 90 days, visit_month_seed: 9 (September)
+          → next_visit_date: 2026-09-22 (same day in September)
         """
         if not self.last_visit_date or not self.risk_assessment_level:
             return None
@@ -359,7 +372,35 @@ class ProgramFacility(models.Model):
             return None
 
         from datetime import timedelta
-        return self.last_visit_date + timedelta(days=self.risk_assessment_level.visit_frequency_days)
+
+        # Calculate base next visit date using frequency
+        base_next_date = self.last_visit_date + timedelta(days=self.risk_assessment_level.visit_frequency_days)
+
+        # If no month seed preference, return the base calculation
+        if not self.visit_month_seed or self.visit_month_seed < 1 or self.visit_month_seed > 12:
+            return base_next_date
+
+        # Adjust to visit_month_seed: keep same day, align to preferred month
+        try:
+            # Try to keep the same day in the preferred month
+            adjusted_date = base_next_date.replace(month=self.visit_month_seed)
+
+            # If adjusted date is in the past, move to the next year
+            if adjusted_date < base_next_date:
+                adjusted_date = adjusted_date.replace(year=adjusted_date.year + 1)
+
+            return adjusted_date
+        except ValueError:
+            # Handle edge case: Feb 29 in non-leap year, etc.
+            # Fall back to last day of the preferred month
+            import calendar
+            last_day = calendar.monthrange(base_next_date.year, self.visit_month_seed)[1]
+            adjusted_date = base_next_date.replace(month=self.visit_month_seed, day=last_day)
+
+            if adjusted_date < base_next_date:
+                adjusted_date = adjusted_date.replace(year=adjusted_date.year + 1)
+
+            return adjusted_date
 
     def update_next_visit_date(self):
         """Recalculate and save next_visit_date based on current last_visit_date and risk level.
