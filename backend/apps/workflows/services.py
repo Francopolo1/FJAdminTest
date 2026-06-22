@@ -205,6 +205,17 @@ def advance_instance(instance, actor, trigger_event, comments=None):
                 from apps.enforcement.services import run_compliance_check
                 run_compliance_check(instance, actor=actor)
 
+            elif next_step.step_type == "CalculateVisitDate":
+                # Recalculate next_visit_date for the facility using the latest
+                # checklist run date as the baseline
+                pf = getattr(instance, "program_facility", None)
+                if pf:
+                    pf.update_next_visit_date()
+                    from apps.core.models import ProgramFacility
+                    ProgramFacility.objects.filter(
+                        program_facility_id=pf.program_facility_id
+                    ).update(next_visit_date=pf.next_visit_date)
+
         WorkflowAuditLog.objects.create(
             instance=instance,
             actor=actor,
