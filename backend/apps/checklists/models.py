@@ -450,5 +450,5 @@ class ChecklistItemComplianceRules(models.Model):
     compliance_rule = models.ForeignKey('compliance.ComplianceRule', models.DO_NOTHING)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'checklist_item_compliance_rules'
