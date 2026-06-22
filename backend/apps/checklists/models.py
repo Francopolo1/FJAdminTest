@@ -428,6 +428,20 @@ def on_response_saved(sender, instance, **kwargs):
       3. Ensure the run is marked InProgress if it was NotStarted.
     """
     run = instance.run
+
+    # Recalculate cached counters (answered_items, answered_required)
+    answered_ids = set(
+        run.responses
+        .exclude(response_value__isnull=True)
+        .exclude(response_value="")
+        .values_list("item_id", flat=True)
+    )
+
+    run.answered_items = len(answered_ids)
+    run.answered_required = run.template.items.filter(
+        is_required=True, item_id__in=answered_ids
+    ).count()
+
     run.mark_in_progress()
     run.try_auto_complete()
     

@@ -430,8 +430,11 @@ class ChecklistRunViewSet(viewsets.ReadOnlyModelViewSet):
         if errors and not saved:
             return Response({"errors": errors}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Refresh from DB (signal has already updated counters & status)
+        # Refresh from DB to get updated cached counters (answered_items, answered_required)
         run.refresh_from_db()
+
+        # Auto-complete if all required items are answered
+        run.try_auto_complete()
 
         response_data = ChecklistRunSerializer(run).data
         if errors:
