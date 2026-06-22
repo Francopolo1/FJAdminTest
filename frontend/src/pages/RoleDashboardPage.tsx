@@ -26,6 +26,7 @@ import type {
 
 const STATUS_COLORS: Record<string, string> = {
   Approved: "#10B981",
+  Closed: "#10B981",
   InProgress: "#2563EB",
   OnHold: "#F59E0B",
   Rejected: "#E11D48",

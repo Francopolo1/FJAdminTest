@@ -13,6 +13,7 @@ const STATUS_OPTIONS = [
   { value: "Draft", label: "Draft" },
   { value: "InProgress", label: "In Progress" },
   { value: "Approved", label: "Approved" },
+  { value: "Closed", label: "Closed" },
   { value: "Rejected", label: "Rejected" },
   { value: "Cancelled", label: "Cancelled" },
   { value: "OnHold", label: "On Hold" },

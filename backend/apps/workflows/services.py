@@ -156,7 +156,7 @@ def advance_instance(instance, actor, trigger_event, comments=None):
             to_status = {
                 "Approve": "Approved",
                 "Reject": "Rejected",
-                "Inspection Closed": "Approved",
+                "Inspection Closed": "Closed",
                 "Inspection Rejected": "Rejected",
             }.get(trigger_event, "Approved")
         else:
