@@ -286,12 +286,28 @@ def _create_step_tasks(instance, step, assigned_by):
     User = get_user_model()
 
     program_district = instance.program_facility.program_district
-    assignees = list(
-        User.objects.filter(
-            user_program_districts__program_district=program_district,
-            profile__role=role,
-        ).distinct()
-    )
+
+    # For supervisor/decision steps, prefer the initiating user's direct manager
+    # so that approval tasks always go to the inspector's own supervisor.
+    if role == "supervisor":
+        manager_profile = getattr(
+            getattr(instance.initiated_by, "profile", None), "manager", None
+        )
+        manager = getattr(manager_profile, "user", None) if manager_profile else None
+        assignees = [manager] if manager else []
+    else:
+        assignees = []
+
+    # Fall back to any user with the right role assigned to the program district
+    if not assignees:
+        assignees = list(
+            User.objects.filter(
+                user_program_districts__program_district=program_district,
+                profile__role=role,
+            ).distinct()
+        )
+
+    # Last resort: assign to the initiator so the step still has an owner
     if not assignees:
         assignees = [instance.initiated_by]
 
