@@ -117,7 +117,7 @@ class FineTier(models.Model):
 
 class ChecklistItemComplianceRule(models.Model):
     """dbo.checklist_item_compliance_rules — links checklist items to rules."""
-    checklist_item_compliance_rule_id = GUIDField(primary_key=True, default=uuid.uuid4)
+    checklist_item_compliance_rule_id = models.CharField(primary_key=True, max_length=36)
     # FK to checklist_item — avoid circular import by using string reference
     checklist_item    = models.ForeignKey(
         "checklists.ChecklistItem",
