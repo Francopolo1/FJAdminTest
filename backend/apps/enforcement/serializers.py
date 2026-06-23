@@ -52,7 +52,7 @@ class ReceivePaymentInputSerializer(serializers.Serializer):
     payment_method   = serializers.ChoiceField(choices=FinePayment.METHOD_CHOICES)
     payment_date     = serializers.DateField(required=False, allow_null=True)
     reference_number = serializers.CharField(required=False, allow_blank=True, allow_null=True)
-    installment_id   = serializers.UUIDField(required=False, allow_null=True)
+    installment_id   = serializers.CharField(max_length=36, required=False, allow_null=True)
     notes            = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
 
@@ -151,9 +151,9 @@ class FineAssessmentSerializer(serializers.ModelSerializer):
 
 
 class AssessFineInputSerializer(serializers.Serializer):
-    violation_id     = serializers.UUIDField()
+    violation_id     = serializers.CharField(max_length=36)
     assessed_amount  = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0.01"))
-    fine_tier_id     = serializers.UUIDField(required=False, allow_null=True)
+    fine_tier_id     = serializers.CharField(max_length=36, required=False, allow_null=True)
     notes            = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
 
