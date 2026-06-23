@@ -21,7 +21,7 @@ class WorkflowDefinition(models.Model):
 
     class Meta:
         db_table        = "workflow_definition"
-        managed         = False
+        managed = True
         unique_together = [("name", "version")]
 
     def __str__(self):
@@ -43,7 +43,7 @@ class WorkflowStep(models.Model):
 
     class Meta:
         db_table = "workflow_step"
-        managed  = False
+        managed = True
         ordering = ["step_order"]
 
     def __str__(self):
@@ -65,7 +65,7 @@ class WorkflowTransition(models.Model):
 
     class Meta:
         db_table        = "workflow_transition"
-        managed         = False
+        managed = True
         unique_together = [("from_step", "trigger_event")]
 
     def __str__(self):
@@ -83,7 +83,7 @@ class StepAction(models.Model):
 
     class Meta:
         db_table = "step_action"
-        managed  = False
+        managed = True
         ordering = ["execution_order"]
 
 
@@ -114,7 +114,7 @@ class WorkflowInstance(models.Model):
 
     class Meta:
         db_table = "workflow_instance"
-        managed  = False
+        managed = True
         ordering = ["-started_at"]
 
     def __str__(self):
@@ -146,7 +146,7 @@ class WorkflowTask(models.Model):
 
     class Meta:
         db_table = "workflow_task"
-        managed  = False
+        managed = True
         ordering = ["due_date"]
 
 
@@ -167,5 +167,5 @@ class WorkflowAuditLog(models.Model):
 
     class Meta:
         db_table = "workflow_audit_log"
-        managed  = False
+        managed = True
         ordering = ["-logged_at"]
