@@ -17,7 +17,7 @@ from apps.core.db_fields import GUIDField
 
 class ComplianceRule(models.Model):
     """dbo.compliance_rules"""
-    compliance_rule_id = GUIDField(primary_key=True, default=uuid.uuid4)
+    compliance_rule_id = models.CharField(primary_key=True, max_length=36)
     code               = models.CharField(max_length=25, unique=True)
     name               = models.CharField(max_length=200)
     description        = models.TextField(null=True, blank=True)
@@ -35,7 +35,7 @@ class ComplianceRule(models.Model):
 
 class ViolationSeverityLevel(models.Model):
     """dbo.violationseveritylevels"""
-    violation_severity_level_id = GUIDField(primary_key=True, default=uuid.uuid4)
+    violation_severity_level_id = models.CharField(primary_key=True, max_length=36)
     code                        = models.CharField(max_length=10)
     name                        = models.CharField(max_length=50)
     rank                        = models.IntegerField()
@@ -51,7 +51,7 @@ class ViolationSeverityLevel(models.Model):
 
 class FineSchedule(models.Model):
     """dbo.fine_schedules"""
-    fine_schedule_id  = GUIDField(primary_key=True, default=uuid.uuid4)
+    fine_schedule_id  = models.CharField(primary_key=True, max_length=36)
     compliance_rule   = models.ForeignKey(
         ComplianceRule,
         on_delete=models.PROTECT,
@@ -83,7 +83,7 @@ class FineSchedule(models.Model):
 
 class FineTier(models.Model):
     """dbo.fine_tiers"""
-    fine_tier_id              = GUIDField(primary_key=True, default=uuid.uuid4)
+    fine_tier_id              = models.CharField(primary_key=True, max_length=36)
     fine_schedule             = models.ForeignKey(
         FineSchedule,
         on_delete=models.CASCADE,
@@ -143,7 +143,7 @@ class ChecklistItemComplianceRule(models.Model):
 
 class ComplianceViolation(models.Model):
     """dbo.compliance_violations"""
-    compliance_violation_id           = GUIDField(primary_key=True, default=uuid.uuid4)
+    compliance_violation_id           = models.CharField(primary_key=True, max_length=36)
     checklist_item_compliance_rule    = models.ForeignKey(
         ChecklistItemComplianceRule,
         on_delete=models.PROTECT,
