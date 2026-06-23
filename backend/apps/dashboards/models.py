@@ -8,7 +8,7 @@ from apps.core.db_fields import GUIDField
 
 class VWInstanceDashboard(models.Model):
     """Maps to dbo.VW_InstanceDashboard."""
-    instance_id          = GUIDField(primary_key=True)
+    instance_id          = models.CharField(primary_key=True, max_length=36)
     reference_no         = models.CharField(max_length=50)
     workflow_name        = models.CharField(max_length=200,  db_column="WorkflowName")
     category             = models.CharField(max_length=100,  db_column="Category",      null=True)
@@ -38,7 +38,7 @@ class VWInstanceDashboard(models.Model):
 
 class VWPendingTask(models.Model):
     """Maps to dbo.VW_PendingTasks."""
-    task_id         = GUIDField(primary_key=True)
+    task_id         = models.CharField(primary_key=True, max_length=36)
     reference_no    = models.CharField(max_length=50)
     workflow_name   = models.CharField(max_length=200,  db_column="WorkflowName")
     step_name       = models.CharField(max_length=200)
@@ -61,7 +61,7 @@ class VWPendingTask(models.Model):
 
 class VWChecklistProgress(models.Model):
     """Maps to dbo.VW_ChecklistProgress."""
-    instance_id       = GUIDField(primary_key=True)
+    instance_id       = models.CharField(primary_key=True, max_length=36)
     reference_no      = models.CharField(max_length=50)
     checklist_title   = models.CharField(max_length=300, db_column="Checklisttitle")
     blocks_advance    = models.BooleanField()

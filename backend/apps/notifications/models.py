@@ -1,7 +1,6 @@
-import uuid
 from django.db import models
 from django.conf import settings
-from apps.core.db_fields import GUIDField
+from apps.core.db_fields import new_guid_str
 from ..workflows.models import WorkflowInstance
 
 
@@ -14,7 +13,7 @@ class Notification(models.Model):
         ("Slack", "Slack"),
     ]
 
-    notif_id     = GUIDField(primary_key=True, default=uuid.uuid4)
+    notif_id     = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     instance     = models.ForeignKey(
         WorkflowInstance, on_delete=models.CASCADE,
         db_column="instance_id", related_name="notifications"

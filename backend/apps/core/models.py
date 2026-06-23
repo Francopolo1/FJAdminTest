@@ -93,7 +93,7 @@ class UserProfile(models.Model):
 
 
 class AuditLog(models.Model):
-    id         = GUIDField(primary_key=True, default=uuid.uuid4)
+    id         = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     table_name = models.CharField(max_length=50, null=True, blank=True)
     record_id  = GUIDField(null=True, blank=True)
     action     = models.CharField(max_length=10, null=True, blank=True)

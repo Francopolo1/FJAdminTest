@@ -1,11 +1,10 @@
-import uuid
 from django.db import models
 from django.conf import settings
-from apps.core.db_fields import GUIDField
+from apps.core.db_fields import new_guid_str
 
 
 class WorkflowDefinition(models.Model):
-    workflow_id                     = GUIDField(primary_key=True, default=uuid.uuid4)
+    workflow_id                     = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     name                            = models.CharField(max_length=200)
     description                     = models.TextField(null=True, blank=True)
     version                         = models.CharField(max_length=20, default="1.0")
@@ -29,7 +28,7 @@ class WorkflowDefinition(models.Model):
 
 
 class WorkflowStep(models.Model):
-    step_id         = GUIDField(primary_key=True, default=uuid.uuid4)
+    step_id         = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     workflow        = models.ForeignKey(WorkflowDefinition, on_delete=models.CASCADE,
                                         db_column="workflow_id", related_name="steps")
     step_name       = models.CharField(max_length=200)
@@ -51,7 +50,7 @@ class WorkflowStep(models.Model):
 
 
 class WorkflowTransition(models.Model):
-    transition_id   = GUIDField(primary_key=True, default=uuid.uuid4)
+    transition_id   = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     workflow        = models.ForeignKey(WorkflowDefinition, on_delete=models.CASCADE,
                                         db_column="workflow_id", related_name="transitions")
     from_step       = models.ForeignKey(WorkflowStep, on_delete=models.CASCADE,
@@ -73,7 +72,7 @@ class WorkflowTransition(models.Model):
 
 
 class StepAction(models.Model):
-    action_id       = GUIDField(primary_key=True, default=uuid.uuid4)
+    action_id       = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     step            = models.ForeignKey(WorkflowStep, on_delete=models.CASCADE,
                                         db_column="step_id", related_name="actions")
     action_type     = models.CharField(max_length=100)
@@ -93,7 +92,7 @@ class WorkflowInstance(models.Model):
         ("Rejected","Rejected"), ("Cancelled","Cancelled"), ("OnHold","On Hold"),
         ("Closed","Closed"),
     ]
-    instance_id      = GUIDField(primary_key=True, default=uuid.uuid4)
+    instance_id      = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     workflow         = models.ForeignKey(WorkflowDefinition, on_delete=models.PROTECT,
                                          db_column="workflow_id", related_name="instances")
     initiated_by     = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
@@ -126,7 +125,7 @@ class WorkflowTask(models.Model):
         ("Pending","Pending"), ("InProgress","In Progress"), ("Completed","Completed"),
         ("Delegated","Delegated"), ("Overdue","Overdue"), ("Skipped","Skipped"),
     ]
-    task_id      = GUIDField(primary_key=True, default=uuid.uuid4)
+    task_id      = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     instance     = models.ForeignKey(WorkflowInstance, on_delete=models.CASCADE,
                                      db_column="instance_id", related_name="tasks")
     step         = models.ForeignKey(WorkflowStep, on_delete=models.PROTECT,
@@ -151,7 +150,7 @@ class WorkflowTask(models.Model):
 
 
 class WorkflowAuditLog(models.Model):
-    log_id      = GUIDField(primary_key=True, default=uuid.uuid4)
+    log_id      = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     instance    = models.ForeignKey(WorkflowInstance, on_delete=models.CASCADE,
                                     db_column="instance_id", related_name="audit_logs")
     task        = models.ForeignKey(WorkflowTask, null=True, blank=True,

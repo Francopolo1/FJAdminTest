@@ -26,7 +26,7 @@ from django.dispatch import receiver
 from django.conf import settings
 from django.utils import timezone
 
-from apps.core.db_fields import GUIDField
+from apps.core.db_fields import GUIDField, new_guid_str
 from ..workflows.models import WorkflowDefinition, WorkflowStep, WorkflowInstance, WorkflowTask
 from ..compliance.models import ComplianceRule, ViolationSeverityLevel, FineSchedule, FineTier
 
@@ -45,7 +45,7 @@ class ChecklistTemplate(models.Model):
     or Skipped.
     """
 
-    template_id    = GUIDField(primary_key=True, default=uuid.uuid4)
+    template_id    = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     workflow       = models.ForeignKey(
         WorkflowDefinition, on_delete=models.CASCADE,
         related_name="checklist_templates",
@@ -130,7 +130,7 @@ class ChecklistItem(models.Model):
 
     CHOICE_TYPES = {"SingleChoice", "MultiChoice"}
 
-    item_id        = GUIDField(primary_key=True, default=uuid.uuid4)
+    item_id        = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     template       = models.ForeignKey(
         ChecklistTemplate, on_delete=models.CASCADE, related_name="items"
     )
@@ -258,7 +258,7 @@ class ChecklistRun(models.Model):
         ("Skipped",    "Skipped"),
     ]
 
-    run_id            = GUIDField(primary_key=True, default=uuid.uuid4)
+    run_id            = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     instance          = models.ForeignKey(
         WorkflowInstance, on_delete=models.CASCADE, related_name="checklist_runs"
     )
@@ -371,7 +371,7 @@ class ChecklistResponse(models.Model):
     existing record (upsert).
     """
 
-    response_id    = GUIDField(primary_key=True, default=uuid.uuid4)
+    response_id    = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     run            = models.ForeignKey(
         ChecklistRun, on_delete=models.CASCADE, related_name="responses"
     )
