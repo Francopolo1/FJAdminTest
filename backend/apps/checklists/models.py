@@ -450,11 +450,3 @@ def on_response_saved(sender, instance, **kwargs):
     run.mark_in_progress()
     run.try_auto_complete()
     
-class ChecklistItemComplianceRules(models.Model):
-    checklist_item_compliance_rule_id = models.CharField(primary_key=True, max_length=36)
-    checklist_item = models.ForeignKey(ChecklistItem, models.DO_NOTHING, blank=True, null=True)
-    compliance_rule = models.ForeignKey('compliance.ComplianceRule', models.DO_NOTHING)
-
-    class Meta:
-        managed = True
-        db_table = 'checklist_item_compliance_rules'
