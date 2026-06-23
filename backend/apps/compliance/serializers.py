@@ -134,11 +134,11 @@ class ComplianceViolationSerializer(serializers.ModelSerializer):
 
 class ComplianceViolationCreateSerializer(serializers.Serializer):
     """Validates input for creating a new violation."""
-    checklist_item_compliance_rule_id = serializers.UUIDField()
+    checklist_item_compliance_rule_id = serializers.CharField(max_length=36)
     violation_date                    = serializers.DateField()
-    violation_severity_level_id       = serializers.UUIDField()
+    violation_severity_level_id       = serializers.CharField(max_length=36)
     violation_description             = serializers.CharField(required=False, allow_blank=True)
-    checklist_response_id             = serializers.UUIDField()
+    checklist_response_id             = serializers.CharField(max_length=36)
 
 
 class ComplianceSummarySerializer(serializers.Serializer):
