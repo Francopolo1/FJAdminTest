@@ -1,8 +1,16 @@
 from django.contrib import admin
 from .models import (
     WorkflowAuditLog, WorkflowDefinition, WorkflowStep, WorkflowTransition,
-    StepAction, WorkflowInstance, WorkflowTask, 
+    StepAction, WorkflowInstance, WorkflowTask,
 )
+
+
+@admin.register(WorkflowStep)
+class WorkflowStepAdmin(admin.ModelAdmin):
+    list_display  = ["step_name", "workflow", "step_type", "step_order", "is_initial", "is_final"]
+    list_filter   = ["step_type", "workflow"]
+    search_fields = ["step_name", "workflow__name"]
+    ordering      = ["workflow", "step_order"]
 
 
 class WorkflowStepInline(admin.TabularInline):
