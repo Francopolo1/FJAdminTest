@@ -12,14 +12,13 @@ Tables mapped:
   transactions        → Transaction
   transaction_splits  → TransactionSplit
 """
-import uuid
 from django.db import models
-from apps.core.db_fields import GUIDField, new_guid_str
+from apps.core.db_fields import new_guid_str
 
 
 class Fund(models.Model):
     """dbo.funds"""
-    fund_id        = GUIDField(primary_key=True, default=uuid.uuid4)
+    fund_id        = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     code           = models.CharField(max_length=10, unique=True)
     title          = models.CharField(max_length=120)
     description    = models.TextField(null=True, blank=True)
@@ -41,7 +40,7 @@ class Fund(models.Model):
 
 class Org(models.Model):
     """dbo.orgs"""
-    org_id         = GUIDField(primary_key=True, default=uuid.uuid4)
+    org_id         = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     code           = models.CharField(max_length=10, unique=True)
     title          = models.CharField(max_length=120)
     description    = models.TextField(null=True, blank=True)
@@ -70,7 +69,7 @@ class Account(models.Model):
     """dbo.accounts"""
     NORMAL_BALANCE_CHOICES = [("Debit", "Debit"), ("Credit", "Credit")]
 
-    account_id     = GUIDField(primary_key=True, default=uuid.uuid4)
+    account_id     = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     code           = models.CharField(max_length=10, unique=True)
     title          = models.CharField(max_length=120)
     description    = models.TextField(null=True, blank=True)
@@ -110,7 +109,7 @@ class Program(models.Model):
 
 class Activity(models.Model):
     """dbo.activities"""
-    activity_id    = GUIDField(primary_key=True, default=uuid.uuid4)
+    activity_id    = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     code           = models.CharField(max_length=10, unique=True)
     title          = models.CharField(max_length=120)
     description    = models.TextField(null=True, blank=True)
@@ -131,7 +130,7 @@ class Activity(models.Model):
 
 class Location(models.Model):
     """dbo.locations  (FOAPAL location codes — NOT facility_locations)"""
-    locaton_id     = GUIDField(primary_key=True, default=uuid.uuid4,
+    locaton_id     = models.CharField(primary_key=True, max_length=36, default=new_guid_str,
                                       db_column="locaton_id")   # typo preserved from schema
     code           = models.CharField(max_length=10, unique=True)
     title          = models.CharField(max_length=120)
@@ -155,7 +154,7 @@ class Location(models.Model):
 
 class FoapalString(models.Model):
     """dbo.foapal_strings — Fund-Org-Account-Program-Activity-Location composite."""
-    foapalstring_id = GUIDField(primary_key=True, default=uuid.uuid4)
+    foapalstring_id = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     fund            = models.ForeignKey(Fund,     on_delete=models.PROTECT,
                                         db_column="fund_id",     related_name="foapal_strings")
     org             = models.ForeignKey(Org,      on_delete=models.PROTECT,
@@ -238,7 +237,7 @@ class Transaction(models.Model):
         ("Voided",   "Voided"),
     ]
 
-    id               = GUIDField(primary_key=True, default=uuid.uuid4)
+    id               = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     transaction_date = models.DateField()
     posted_date      = models.DateField(null=True, blank=True)
     reference_number = models.CharField(max_length=50, null=True, blank=True)
@@ -289,7 +288,7 @@ class Transaction(models.Model):
 
 class TransactionSplit(models.Model):
     """dbo.transaction_splits — splits a transaction across multiple FOAPAL strings."""
-    split_id         = GUIDField(primary_key=True, default=uuid.uuid4)
+    split_id         = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     transaction      = models.ForeignKey(
         Transaction, on_delete=models.CASCADE,
         db_column="transaction_id", related_name="splits",
