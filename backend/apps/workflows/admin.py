@@ -38,10 +38,15 @@ class WorkflowDefinitionAdmin(admin.ModelAdmin):
 
 
 class WorkflowTaskInline(admin.TabularInline):
-    model  = WorkflowTask
-    extra  = 0
-    fields = ["step", "assigned_to", "status", "due_date"]
-    readonly_fields = ["assigned_at"]
+    model          = WorkflowTask
+    extra          = 0
+    can_delete     = False
+    max_num        = 0  # No adding tasks via inline
+    fields         = ["step", "assigned_to", "assigned_by", "status", "due_date", "completed_at", "assigned_at"]
+    readonly_fields = ["step", "assigned_to", "assigned_by", "status", "due_date", "completed_at", "assigned_at"]
+
+    def has_add_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(WorkflowInstance)
