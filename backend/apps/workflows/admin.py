@@ -41,9 +41,15 @@ class WorkflowInstanceAdmin(admin.ModelAdmin):
     list_display   = ["reference_no", "workflow", "initiated_by", "status", "priority", "started_at", "due_date"]
     list_filter    = ["status", "priority", "workflow"]
     search_fields  = ["reference_no", "initiated_by__first_name", "initiated_by__last_name"]
-    readonly_fields = ["started_at", "completed_at"]
-    autocomplete_fields = ["workflow", "initiated_by", "program_facility"]
+    readonly_fields = ["instance_id", "started_at", "completed_at"]
+    autocomplete_fields = ["workflow", "initiated_by", "program_facility", "current_step"]
     inlines        = [WorkflowTaskInline]
+    fieldsets = (
+        (None, {"fields": ("instance_id", "reference_no", "workflow", "program_facility", "initiated_by")}),
+        ("Status", {"fields": ("status", "priority", "current_step")}),
+        ("Dates", {"fields": ("started_at", "due_date", "completed_at")}),
+        ("Data", {"fields": ("request_data",), "classes": ("collapse",)}),
+    )
 
 
 @admin.register(WorkflowTask)
