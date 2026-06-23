@@ -9,15 +9,14 @@ Tables mapped:
   checklist_item_compliance_rules   → ChecklistItemComplianceRule
   compliance_violations             → ComplianceViolation
 """
-import uuid
 from django.db import models
-from apps.core.db_fields import GUIDField
+from apps.core.db_fields import new_guid_str
 
 
 
 class ComplianceRule(models.Model):
     """dbo.compliance_rules"""
-    compliance_rule_id = models.CharField(primary_key=True, max_length=36)
+    compliance_rule_id = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     code               = models.CharField(max_length=25, unique=True)
     name               = models.CharField(max_length=200)
     description        = models.TextField(null=True, blank=True)
@@ -35,7 +34,7 @@ class ComplianceRule(models.Model):
 
 class ViolationSeverityLevel(models.Model):
     """dbo.violationseveritylevels"""
-    violation_severity_level_id = models.CharField(primary_key=True, max_length=36)
+    violation_severity_level_id = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     code                        = models.CharField(max_length=10)
     name                        = models.CharField(max_length=50)
     rank                        = models.IntegerField()
@@ -51,7 +50,7 @@ class ViolationSeverityLevel(models.Model):
 
 class FineSchedule(models.Model):
     """dbo.fine_schedules"""
-    fine_schedule_id  = models.CharField(primary_key=True, max_length=36)
+    fine_schedule_id  = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     compliance_rule   = models.ForeignKey(
         ComplianceRule,
         on_delete=models.PROTECT,
@@ -83,7 +82,7 @@ class FineSchedule(models.Model):
 
 class FineTier(models.Model):
     """dbo.fine_tiers"""
-    fine_tier_id              = models.CharField(primary_key=True, max_length=36)
+    fine_tier_id              = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     fine_schedule             = models.ForeignKey(
         FineSchedule,
         on_delete=models.CASCADE,
@@ -117,7 +116,7 @@ class FineTier(models.Model):
 
 class ChecklistItemComplianceRule(models.Model):
     """dbo.checklist_item_compliance_rules — links checklist items to rules."""
-    checklist_item_compliance_rule_id = models.CharField(primary_key=True, max_length=36)
+    checklist_item_compliance_rule_id = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     # FK to checklist_item — avoid circular import by using string reference
     checklist_item    = models.ForeignKey(
         "checklists.ChecklistItem",
@@ -143,7 +142,7 @@ class ChecklistItemComplianceRule(models.Model):
 
 class ComplianceViolation(models.Model):
     """dbo.compliance_violations"""
-    compliance_violation_id           = models.CharField(primary_key=True, max_length=36)
+    compliance_violation_id           = models.CharField(primary_key=True, max_length=36, default=new_guid_str)
     checklist_item_compliance_rule    = models.ForeignKey(
         ChecklistItemComplianceRule,
         on_delete=models.PROTECT,
