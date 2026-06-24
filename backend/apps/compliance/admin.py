@@ -73,18 +73,16 @@ class ViolationSeverityLevelAdmin(admin.ModelAdmin):
 @admin.register(FineSchedule)
 class FineScheduleAdmin(admin.ModelAdmin):
     list_display    = ["schedule_name", "compliance_rule", "effective_date",
-                        "expiration_date", "tier_count"]
+                        "expiration_date", "is_active_display", "tier_count"]
     search_fields   = ["schedule_name"]
     readonly_fields = ["fine_schedule_id"]
 
-    def active_badge(self, obj):
+    @admin.display(description="Active", boolean=True)
+    def is_active_display(self, obj):
         try:
-            if obj.is_active:
-                return format_html('<span style="color:#059669;font-weight:600">● Active</span>')
+            return obj.is_active
         except Exception:
-            pass
-        return format_html('<span style="color:#ADB5BD">● Inactive</span>')
-    active_badge.short_description = "Active"
+            return False
 
     def tier_count(self, obj):
         try:
