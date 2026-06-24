@@ -207,6 +207,16 @@ class ChecklistRunSerializer(serializers.ModelSerializer):
     required_completion_pct = serializers.FloatField(read_only=True)
     is_blocking           = serializers.BooleanField(read_only=True)
     responses             = ChecklistResponseSerializer(many=True, read_only=True)
+    can_reopen            = serializers.SerializerMethodField()
+
+    def get_can_reopen(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user:
+            return False
+        if request.user.is_staff:
+            return True
+        role = getattr(getattr(request.user, "profile", None), "role", None)
+        return role in ("supervisor", "director_manager")
     facility_name         = serializers.CharField(
         source="instance.program_facility.facility.name", read_only=True, default=None,
     )
@@ -242,7 +252,7 @@ class ChecklistRunSerializer(serializers.ModelSerializer):
             "started_at", "completed_at", "created_at",
             "facility_name", "facility_address", "facility_city_state_zip",
             "facility_phone", "license_number", "license_expire_date", "tracking_id",
-            "responses",
+            "responses", "can_reopen",
         ]
         read_only_fields = [
             "started_at", "completed_at", "created_at",

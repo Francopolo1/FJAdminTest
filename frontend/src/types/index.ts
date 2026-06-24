@@ -393,6 +393,7 @@ export interface ChecklistResponseItem {
 export interface ChecklistRunDetail extends ChecklistRunListItem {
   template_description: string | null;
   is_blocking: boolean;
+  can_reopen: boolean;
   facility_address: string | null;
   facility_city_state_zip: string | null;
   facility_phone: string | null;

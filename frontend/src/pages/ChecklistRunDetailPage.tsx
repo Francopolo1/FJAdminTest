@@ -638,7 +638,7 @@ export function ChecklistRunDetailPage() {
           </div>
         )}
 
-        {isLocked && (user?.is_staff || user?.role === "supervisor") && (
+        {isLocked && run.can_reopen && (
           <div className="form-row" style={{ marginTop: "1rem" }}>
             <button
               type="button"
