@@ -73,7 +73,7 @@ class ViolationSeverityLevelAdmin(admin.ModelAdmin):
 @admin.register(FineSchedule)
 class FineScheduleAdmin(admin.ModelAdmin):
     list_display    = ["schedule_name", "compliance_rule", "effective_date",
-                        "expiration_date", "active_badge", "tier_count"]
+                        "expiration_date", "tier_count"]
     search_fields   = ["schedule_name"]
     readonly_fields = ["fine_schedule_id"]
 
