@@ -13,7 +13,8 @@ class FineTierInline(admin.TabularInline):
     model   = FineTier
     extra   = 0
     fields  = ["offense_number", "violation_severity_level", "fine_amount",
-                "days_to_correct", "suspension_required"]
+                "days_to_correct", "suspension_required", "compliance_window"]
+    exclude = ["fine_tier_id"]
     ordering = ["offense_number"]
 
 
@@ -80,13 +81,19 @@ class FineScheduleAdmin(admin.ModelAdmin):
     inlines         = [FineTierInline]
 
     def active_badge(self, obj):
-        if obj.is_active:
-            return format_html('<span style="color:#059669;font-weight:600">● Active</span>')
+        try:
+            if obj.is_active:
+                return format_html('<span style="color:#059669;font-weight:600">● Active</span>')
+        except Exception:
+            pass
         return format_html('<span style="color:#ADB5BD">● Inactive</span>')
     active_badge.short_description = "Active"
 
     def tier_count(self, obj):
-        return obj.tiers.count()
+        try:
+            return obj.tiers.count()
+        except Exception:
+            return "—"
     tier_count.short_description = "Tiers"
 
 

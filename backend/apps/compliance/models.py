@@ -73,6 +73,8 @@ class FineSchedule(models.Model):
     def is_active(self):
         from django.utils import timezone
         today = timezone.now().date()
+        if not self.effective_date:
+            return False
         if self.effective_date > today:
             return False
         if self.expiration_date and self.expiration_date < today:
