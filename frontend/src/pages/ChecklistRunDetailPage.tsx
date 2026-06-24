@@ -6,6 +6,7 @@ import {
   createBoxFolder,
   fetchChecklistProgress,
   fetchChecklistRun,
+  reopenChecklistRun,
   skipChecklistRun,
   submitChecklistResponses,
 } from "../lib/checklistsApi";
@@ -270,6 +271,25 @@ export function ChecklistRunDetailPage() {
         setActionError(data.detail ?? data.errors?.map((e) => e.detail).join("; ") ?? "Unable to save responses.");
       } else {
         setActionError("Unable to save responses.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleReopen = async () => {
+    if (!id) return;
+    if (!window.confirm("Reopen this checklist for editing? This will set it back to In Progress.")) return;
+    setIsSubmitting(true);
+    setActionError(null);
+    try {
+      await reopenChecklistRun(id);
+      await load(id);
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.data?.detail) {
+        setActionError(String(err.response.data.detail));
+      } else {
+        setActionError("Unable to reopen this checklist.");
       }
     } finally {
       setIsSubmitting(false);
@@ -615,6 +635,19 @@ export function ChecklistRunDetailPage() {
                 Skip Checklist
               </button>
             )}
+          </div>
+        )}
+
+        {isLocked && (user?.is_staff || user?.role === "supervisor") && (
+          <div className="form-row" style={{ marginTop: "1rem" }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              disabled={isSubmitting}
+              onClick={() => void handleReopen()}
+            >
+              Reopen Checklist
+            </button>
           </div>
         )}
       </form>

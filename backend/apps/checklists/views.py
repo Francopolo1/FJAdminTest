@@ -502,13 +502,19 @@ class ChecklistRunViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(
         detail=True, methods=["post"],
-        permission_classes=[IsAdminUser],
+        permission_classes=[IsAuthenticated],
     )
     def reopen(self, request, pk=None):
         """
         Reopen a Completed or Skipped run so users can amend answers.
-        Admin only — triggers audit note in request data.
+        Allowed for: admin (is_staff) and supervisors (profile.role == 'supervisor').
         """
+        actor_role = getattr(getattr(request.user, "profile", None), "role", None)
+        if not request.user.is_staff and actor_role != "supervisor":
+            return Response(
+                {"detail": "Only supervisors and admins can reopen a checklist."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         run = self.get_object()
 
         if run.status not in ("Completed", "Skipped"):

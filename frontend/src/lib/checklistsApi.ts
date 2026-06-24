@@ -51,6 +51,11 @@ export async function skipChecklistRun(id: string): Promise<ChecklistRunDetail> 
   return data;
 }
 
+export async function reopenChecklistRun(id: string): Promise<ChecklistRunDetail> {
+  const { data } = await api.post<ChecklistRunDetail>(`/api/checklists/runs/${id}/reopen/`);
+  return data;
+}
+
 export async function createBoxFolder(runId: string, itemId: string): Promise<ChecklistResponseItem> {
   const { data } = await api.post<ChecklistResponseItem>(
     `/api/checklists/runs/${runId}/items/${itemId}/box-folder/`
