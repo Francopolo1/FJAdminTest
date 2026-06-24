@@ -74,8 +74,7 @@ class ViolationSeverityLevelAdmin(admin.ModelAdmin):
 class FineScheduleAdmin(admin.ModelAdmin):
     list_display    = ["schedule_name", "compliance_rule", "effective_date",
                         "expiration_date", "active_badge", "tier_count"]
-    search_fields   = ["schedule_name", "compliance_rule__code", "compliance_rule__name"]
-    ordering        = ["-effective_date"]
+    search_fields   = ["schedule_name"]
     readonly_fields = ["fine_schedule_id"]
 
     def active_badge(self, obj):
