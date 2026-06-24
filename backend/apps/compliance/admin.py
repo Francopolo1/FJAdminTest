@@ -1,5 +1,4 @@
 from django.contrib import admin
-from django.utils.html import format_html
 from .models import (
     ComplianceRule, ViolationSeverityLevel,
     FineSchedule, FineTier,
@@ -22,6 +21,7 @@ class FineScheduleInline(admin.TabularInline):
     model   = FineSchedule
     extra   = 0
     fields  = ["schedule_name", "effective_date", "expiration_date"]
+    exclude = ["fine_schedule_id"]
     show_change_link = True
 
 
@@ -29,6 +29,7 @@ class ChecklistItemLinkInline(admin.TabularInline):
     model            = ChecklistItemComplianceRule
     extra            = 0
     fields           = ["checklist_item"]
+    exclude          = ["checklist_item_compliance_rule_id"]
     show_change_link = True
     verbose_name      = "Linked checklist item"
     verbose_name_plural = "Linked checklist items"
@@ -49,14 +50,15 @@ class ComplianceRuleAdmin(admin.ModelAdmin):
         ("Status",     {"fields": ("is_active", "created_date")}),
     )
 
+    @admin.display(description="Violations")
     def violation_count_display(self, obj):
-        count = ComplianceViolation.objects.filter(
-            checklist_item_compliance_rule__compliance_rule=obj
-        ).count()
-        if count:
-            return format_html('<span style="color:#E11D48;font-weight:700">{}</span>', count)
-        return "0"
-    violation_count_display.short_description = "Violations"
+        try:
+            count = ComplianceViolation.objects.filter(
+                checklist_item_compliance_rule__compliance_rule=obj
+            ).count()
+            return str(count) if count else "0"
+        except Exception:
+            return "—"
 
 
 # ── ViolationSeverityLevel ────────────────────────────────────────────────
@@ -74,8 +76,10 @@ class ViolationSeverityLevelAdmin(admin.ModelAdmin):
 class FineScheduleAdmin(admin.ModelAdmin):
     list_display    = ["schedule_name", "compliance_rule", "effective_date",
                         "expiration_date", "is_active_display", "tier_count"]
-    search_fields   = ["schedule_name"]
+    search_fields   = ["schedule_name", "compliance_rule__code", "compliance_rule__name"]
+    ordering        = ["-effective_date"]
     readonly_fields = ["fine_schedule_id"]
+    inlines         = [FineTierInline]
 
     @admin.display(description="Active", boolean=True)
     def is_active_display(self, obj):
@@ -84,12 +88,12 @@ class FineScheduleAdmin(admin.ModelAdmin):
         except Exception:
             return False
 
+    @admin.display(description="Tiers")
     def tier_count(self, obj):
         try:
             return obj.tiers.count()
         except Exception:
             return "—"
-    tier_count.short_description = "Tiers"
 
 
 # ── FineTier ──────────────────────────────────────────────────────────────
@@ -112,11 +116,14 @@ class ChecklistItemComplianceRuleAdmin(admin.ModelAdmin):
     search_fields   = ["compliance_rule__code", "compliance_rule__name"]
     readonly_fields = ["checklist_item_compliance_rule_id"]
 
+    @admin.display(description="Checklist Item")
     def checklist_item_text(self, obj):
-        if obj.checklist_item:
-            return obj.checklist_item.item_text[:60]
+        try:
+            if obj.checklist_item:
+                return obj.checklist_item.item_text[:60]
+        except Exception:
+            pass
         return "—"
-    checklist_item_text.short_description = "Checklist Item"
 
 
 # ── ComplianceViolation ───────────────────────────────────────────────────
@@ -124,7 +131,7 @@ class ChecklistItemComplianceRuleAdmin(admin.ModelAdmin):
 @admin.register(ComplianceViolation)
 class ComplianceViolationAdmin(admin.ModelAdmin):
     list_display    = ["compliance_violation_id", "rule_code", "violation_date",
-                        "severity_badge", "violation_description_short"]
+                        "severity_name", "violation_description_short"]
     list_filter     = ["violation_severity_level", "violation_date"]
     search_fields   = [
         "checklist_item_compliance_rule__compliance_rule__code",
@@ -135,24 +142,25 @@ class ComplianceViolationAdmin(admin.ModelAdmin):
     readonly_fields = ["compliance_violation_id"]
     date_hierarchy  = "violation_date"
 
+    @admin.display(description="Rule")
     def rule_code(self, obj):
         try:
             return obj.checklist_item_compliance_rule.compliance_rule.code
         except Exception:
             return "—"
-    rule_code.short_description = "Rule"
 
-    def severity_badge(self, obj):
-        sev = obj.violation_severity_level
-        colors = {"CRIT": "#E11D48", "HIGH": "#F97316", "MED": "#F59E0B", "LOW": "#6C757D"}
-        color  = colors.get(sev.code.upper(), "#6C757D")
-        return format_html(
-            '<span style="color:{};font-weight:600">{}</span>', color, sev.name
-        )
-    severity_badge.short_description = "Severity"
+    @admin.display(description="Severity")
+    def severity_name(self, obj):
+        try:
+            return obj.violation_severity_level.name
+        except Exception:
+            return "—"
 
+    @admin.display(description="Description")
     def violation_description_short(self, obj):
-        if obj.violation_description:
-            return obj.violation_description[:60]
+        try:
+            if obj.violation_description:
+                return obj.violation_description[:60]
+        except Exception:
+            pass
         return "—"
-    violation_description_short.short_description = "Description"
